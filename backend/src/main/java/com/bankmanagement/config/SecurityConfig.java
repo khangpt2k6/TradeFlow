@@ -45,6 +45,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/async/**").permitAll()
+                .requestMatchers("/ws-market/**").permitAll()
                 .requestMatchers("/health", "/actuator/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated()

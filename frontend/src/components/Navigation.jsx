@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
   GraphUp,
+  Activity,
   Bank2,
   CreditCard,
   ArrowLeftRight,
@@ -231,6 +232,10 @@ const Navigation = () => {
             <GraphUp size={16} />
             <span>Payment Processor</span>
           </Link>
+          <Link to="/trading" className="nav-link">
+            <Activity size={16} />
+            <span>Trading</span>
+          </Link>
         </div>
 
         {/* Right side - Auth or Menu Toggle */}
@@ -340,6 +345,14 @@ const Navigation = () => {
           >
             <GraphUp size={18} />
             <span>Payment Processor</span>
+          </Link>
+          <Link
+            to="/trading"
+            className="mobile-nav-link"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <Activity size={18} />
+            <span>Trading</span>
           </Link>
 
           {isAuthenticated && (

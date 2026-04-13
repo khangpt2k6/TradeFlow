@@ -1,0 +1,178 @@
+.trading-page {
+  padding: 1.5rem;
+  color: #dbe7f3;
+}
+
+.trading-header h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  color: #f3fbff;
+}
+
+.trading-header p {
+  margin-top: 0.4rem;
+  color: #90b0c8;
+}
+
+.trading-grid {
+  margin-top: 1rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.panel {
+  background: linear-gradient(145deg, #10263d, #0b1d30);
+  border: 1px solid #1d3c58;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 14px 32px rgba(2, 8, 19, 0.35);
+}
+
+.panel h3 {
+  margin: 0 0 0.8rem;
+  color: #d8f2ff;
+}
+
+.panel.full {
+  grid-column: 1 / -1;
+}
+
+.asset-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.asset-chip {
+  background: #122b44;
+  border: 1px solid #214969;
+  border-radius: 10px;
+  color: #dbe8f8;
+  padding: 0.5rem 0.65rem;
+  min-width: 120px;
+  display: grid;
+  text-align: left;
+  cursor: pointer;
+}
+
+.asset-chip.active {
+  border-color: #2cc2ff;
+  box-shadow: 0 0 0 1px #2cc2ff;
+}
+
+.asset-chip strong {
+  color: #ecf8ff;
+}
+
+.asset-chip em {
+  font-style: normal;
+  font-size: 0.82rem;
+}
+
+.asset-chip em.up {
+  color: #00d084;
+}
+
+.asset-chip em.down {
+  color: #ff7878;
+}
+
+.chart-shell {
+  height: 280px;
+}
+
+.order-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.order-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.order-form input,
+.order-form select {
+  background: #0a1a2b;
+  border: 1px solid #234766;
+  color: #dbe7f3;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+}
+
+.order-form button {
+  margin-top: 0.4rem;
+  border: none;
+  background: linear-gradient(90deg, #1e95ff, #2cc2ff);
+  color: #04101c;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0.65rem 0.8rem;
+}
+
+.metrics-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.metrics-grid div {
+  background: #0c2236;
+  border-radius: 8px;
+  padding: 0.55rem;
+  display: grid;
+}
+
+.metrics-grid span {
+  color: #8db0cc;
+  font-size: 0.78rem;
+}
+
+.metrics-grid strong {
+  color: #edfbff;
+}
+
+.status-message {
+  margin-top: 0.8rem;
+  color: #c9ecff;
+}
+
+.portfolio-meta {
+  display: flex;
+  gap: 1rem;
+  color: #9ec0da;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.positions-table {
+  width: 100%;
+}
+
+.positions-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr 1fr 1.2fr;
+  gap: 0.6rem;
+  padding: 0.55rem 0.4rem;
+  border-bottom: 1px solid #1b3753;
+}
+
+.positions-row.head {
+  color: #8fadc5;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+@media (max-width: 980px) {
+  .trading-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel.full {
+    grid-column: auto;
+  }
+}

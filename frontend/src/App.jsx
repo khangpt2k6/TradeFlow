@@ -17,6 +17,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import Welcome from "./components/Welcome";
 import PaymentProcessor from "./components/PaymentProcessor";
+import TradingDashboard from "./components/TradingDashboard";
 
 function AppContent() {
   const location = useLocation();
@@ -127,6 +128,38 @@ function AppContent() {
                 element={
                   <ProtectedRoute>
                     <PaymentProcessor />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/trading"
+                element={
+                  <ProtectedRoute>
+                    <TradingDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/portfolio"
+                element={
+                  <ProtectedRoute>
+                    <TradingDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/trade-history"
+                element={
+                  <ProtectedRoute>
+                    <TradingDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/funding"
+                element={
+                  <ProtectedRoute>
+                    <TradingDashboard />
                   </ProtectedRoute>
                 }
               />
