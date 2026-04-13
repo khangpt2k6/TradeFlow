@@ -1,6 +1,6 @@
-# VaultX - Comprehensive Financial Management Platform
+# TradeFlow - Comprehensive Trading Platform
 
-A modern, full-stack financial management system that combines traditional banking operations with advanced trading capabilities. Built with **Spring Boot** backend and **React** frontend, VaultX provides a secure, scalable solution for managing customers, accounts, transactions, and trading portfolios.
+A modern, full-stack trading platform built with **Spring Boot** backend and **React** frontend. TradeFlow provides a secure, scalable solution for portfolio management, market insights, and trade execution workflows.
 
 <img width="1673" height="815" alt="image" src="https://github.com/user-attachments/assets/0ca1f194-64ec-44eb-bc36-05ab0e528287" />
 

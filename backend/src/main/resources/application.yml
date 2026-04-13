@@ -1,6 +1,6 @@
 spring:
   application:
-    name: bank-management-system
+    name: tradeflow-backend
 
   # Use H2 in-memory database if DATABASE_URL is not set (for local development)
   datasource:
@@ -48,11 +48,11 @@ spring:
         max-size: 20
         queue-capacity: 100
         keep-alive: 60s
-      thread-name-prefix: "VaultX-Async-"
+      thread-name-prefix: "TradeFlow-Async-"
     scheduling:
       pool:
         size: 3
-      thread-name-prefix: "VaultX-Scheduler-"
+      thread-name-prefix: "TradeFlow-Scheduler-"
 
 server:
   port: 8080

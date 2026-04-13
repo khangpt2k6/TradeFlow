@@ -1,6 +1,6 @@
 spring:
   application:
-    name: vaultx-banking-system
+    name: tradeflow-backend
   
   datasource:
     url: ${DATABASE_URL}
@@ -48,11 +48,11 @@ spring:
         max-size: 50
         queue-capacity: 200
         keep-alive: 120s
-      thread-name-prefix: "VaultX-Async-"
+      thread-name-prefix: "TradeFlow-Async-"
     scheduling:
       pool:
         size: 5
-      thread-name-prefix: "VaultX-Scheduler-"
+      thread-name-prefix: "TradeFlow-Scheduler-"
 
 server:
   port: ${PORT:8080}

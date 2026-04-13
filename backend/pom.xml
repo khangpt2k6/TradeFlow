@@ -13,10 +13,10 @@
     </parent>
 
     <groupId>com.bankmanagement</groupId>
-    <artifactId>bank-management-system</artifactId>
+    <artifactId>tradeflow-backend</artifactId>
     <version>1.0.0</version>
-    <name>Bank Management System</name>
-    <description>Modern Bank Management System with Spring Boot and React</description>
+    <name>TradeFlow Backend</name>
+    <description>TradeFlow backend service built with Spring Boot</description>
 
     <properties>
         <java.version>17</java.version>

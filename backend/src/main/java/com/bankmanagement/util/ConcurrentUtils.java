@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 public class ConcurrentUtils {
 
     private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(10, r -> {
-        Thread t = new Thread(r, "VaultX-ConcurrentUtils-");
+        Thread t = new Thread(r, "TradeFlow-ConcurrentUtils-");
         t.setDaemon(true);
         return t;
     });

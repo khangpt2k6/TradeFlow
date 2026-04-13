@@ -23,7 +23,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Copy the built JAR from the build stage
-COPY --from=0 /app/target/bank-management-system-1.0.0.jar app.jar
+COPY --from=0 /app/target/tradeflow-backend-1.0.0.jar app.jar
 
 # Create non-root user for security
 RUN addgroup --system spring && adduser --system spring --ingroup spring

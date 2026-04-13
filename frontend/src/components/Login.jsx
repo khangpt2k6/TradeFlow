@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import { Spinner } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import axios from "axios";
-import { API_BASE_URL } from "../config/api";
+import { supabase } from "../lib/supabaseClient";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -27,45 +26,43 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, formData);
-      
-      // Backend returns: token, userId, email, firstName, lastName, roles, customer
-      if (response.data.success && response.data.token) {
-        const { token, userId, email, firstName, lastName, roles, customer } = response.data;
-        
-        // Create user object from response data
-        const user = {
-          userId,
-          email,
-          firstName,
-          lastName,
-          roles: roles || [],
-          customer: customer || null,
-        };
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
 
-        localStorage.setItem("token", token);
-        localStorage.setItem("userId", userId);
-        localStorage.setItem("user", JSON.stringify(user));
+      if (error) {
+        toast.error(error.message || "Login failed");
+        return;
+      }
 
+      if (data?.session) {
         toast.success("Login successful!");
         navigate("/");
-      } else {
-        // Handle case where success is false
-        const errorMessage = response.data.message || "Login failed";
-        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Login error:", error);
-      
-      // Extract error message from response
-      let errorMessage = "Invalid email or password";
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+      toast.error(error.message || "Invalid email or password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOAuthLogin = async (provider) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) {
+        toast.error(error.message || `Could not start ${provider} login`);
       }
-      
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(error.message || `Could not start ${provider} login`);
     } finally {
       setLoading(false);
     }
@@ -134,7 +131,29 @@ const Login = () => {
             </form>
 
             <div className="auth-divider" role="presentation">
-              <span>New to VaultX?</span>
+              <span>Or continue with</span>
+            </div>
+
+            <button
+              type="button"
+              className="auth-btn auth-btn-outline"
+              disabled={loading}
+              onClick={() => handleOAuthLogin("google")}
+            >
+              Continue with Google
+            </button>
+
+            <button
+              type="button"
+              className="auth-btn auth-btn-outline"
+              disabled={loading}
+              onClick={() => handleOAuthLogin("github")}
+            >
+              Continue with GitHub
+            </button>
+
+            <div className="auth-divider" role="presentation">
+              <span>New to TradeFlow?</span>
             </div>
 
             <Link to="/register" className="auth-btn auth-btn-outline">

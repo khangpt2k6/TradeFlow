@@ -1,0 +1,19 @@
+:root {
+  --text-primary: #112443;
+  --text-secondary: #35516f;
+  --text-tertiary: #5d7894;
+  --border-light: rgba(126, 173, 219, 0.4);
+  --border-medium: rgba(98, 154, 211, 0.45);
+  --bg-card: rgba(255, 255, 255, 0.62);
+  --bg-elevated: rgba(255, 255, 255, 0.76);
+  --gradient-background: linear-gradient(135deg, #edf7ff 0%, #eaf4ff 45%, #f5fbff 100%);
+  --app-surface: transparent;
+  --accent: #2d8dff;
+  --accent-soft: #7fd7ff;
+}
+
+/* Keep app-level colors controlled by theme tokens. */
+.App {
+  background: var(--app-surface);
+  color: var(--text-primary);
+}

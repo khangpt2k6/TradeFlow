@@ -22,7 +22,7 @@ public class AsyncConfig {
         executor.setMaxPoolSize(20);
         executor.setQueueCapacity(100);
         executor.setKeepAliveSeconds(60);
-        executor.setThreadNamePrefix("VaultX-Async-");
+        executor.setThreadNamePrefix("TradeFlow-Async-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
@@ -37,7 +37,7 @@ public class AsyncConfig {
         executor.setMaxPoolSize(10);
         executor.setQueueCapacity(50);
         executor.setKeepAliveSeconds(120);
-        executor.setThreadNamePrefix("VaultX-Txn-");
+        executor.setThreadNamePrefix("TradeFlow-Txn-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
@@ -49,7 +49,7 @@ public class AsyncConfig {
     public ThreadPoolTaskScheduler schedulerExecutor() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(3);
-        scheduler.setThreadNamePrefix("VaultX-Scheduler-");
+        scheduler.setThreadNamePrefix("TradeFlow-Scheduler-");
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         scheduler.setAwaitTerminationSeconds(30);
         scheduler.initialize();

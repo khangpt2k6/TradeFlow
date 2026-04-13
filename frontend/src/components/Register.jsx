@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { Spinner } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import axios from "axios";
 import { ArrowRight, Check } from "react-bootstrap-icons";
-import { API_BASE_URL } from "../config/api";
+import { supabase } from "../lib/supabaseClient";
+import { upsertUserProfile } from "../services/supabaseData";
 
 const Register = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -99,28 +99,61 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const { confirmPassword, ...userData } = formData;
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, userData);
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+          },
+        },
+      });
 
-      if (response.data.success) {
-        toast.success("Registration successful! Please login.");
-        navigate("/login");
+      if (error) {
+        toast.error(error.message || "Registration failed");
+        return;
+      }
+
+      if (data?.user?.id) {
+        await upsertUserProfile({
+          userId: data.user.id,
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          dateOfBirth: formData.dateOfBirth,
+        });
+      }
+
+      if (data?.session) {
+        toast.success("Registration complete! You are signed in.");
+        navigate("/");
       } else {
-        const errorMessage = response.data.message || "Registration failed";
-        toast.error(errorMessage);
+        toast.success("Registration successful! Check your inbox to verify your email.");
+        navigate("/login");
       }
     } catch (error) {
       console.error("Registration error:", error);
-      
-      // Extract error message from response
-      let errorMessage = "Registration failed. Please try again.";
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+      toast.error(error.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOAuthLogin = async (provider) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/` },
+      });
+      if (error) {
+        toast.error(error.message || `Could not start ${provider} login`);
       }
-      
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(error.message || `Could not start ${provider} login`);
     } finally {
       setLoading(false);
     }
@@ -161,6 +194,28 @@ const Register = () => {
               >
                 Continue
                 <ArrowRight size={18} />
+              </button>
+
+              <div className="auth-divider" role="presentation">
+                <span>Or continue with</span>
+              </div>
+
+              <button
+                type="button"
+                className="auth-btn auth-btn-outline"
+                disabled={loading}
+                onClick={() => handleOAuthLogin("google")}
+              >
+                Continue with Google
+              </button>
+
+              <button
+                type="button"
+                className="auth-btn auth-btn-outline"
+                disabled={loading}
+                onClick={() => handleOAuthLogin("github")}
+              >
+                Continue with GitHub
               </button>
             </div>
           </div>

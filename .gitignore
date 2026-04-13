@@ -131,6 +131,7 @@ temp/
 # Editor directories and files
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~

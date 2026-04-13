@@ -44,6 +44,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/trading/**").permitAll()
                 .requestMatchers("/api/async/**").permitAll()
                 .requestMatchers("/ws-market/**").permitAll()
                 .requestMatchers("/health", "/actuator/**").permitAll()

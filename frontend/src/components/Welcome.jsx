@@ -4,8 +4,6 @@ import {
   ShieldLock,
   LightningCharge,
   ClockHistory,
-  Bank2,
-  GraphUp,
   CheckCircle,
 } from "react-bootstrap-icons";
 
@@ -15,29 +13,29 @@ const Welcome = () => {
   const features = [
     {
       icon: ShieldLock,
-      title: "Bank-grade security",
+      title: "Enterprise-grade security",
       description:
-        "Multi-factor authentication, continuous monitoring, and 256-bit encryption keep every transaction protected.",
+        "Multi-factor authentication, continuous monitoring, and 256-bit encryption protect every action.",
     },
     {
       icon: LightningCharge,
       title: "Faster workflows",
       description:
-        "Automate fund transfers and portfolio rebalancing so your team can make smarter moves in real-time.",
+        "Automate portfolio rebalancing and execution so your team can react to markets in real-time.",
     },
     {
       icon: ClockHistory,
       title: "24/7 visibility",
       description:
-        "Transparent reporting with instant alerts ensures you never lose sight of balances, trades, or approvals.",
+        "Transparent reporting with instant alerts ensures you never lose sight of risk, performance, or positions.",
     },
   ];
 
   const benefits = [
     "Real-time portfolio tracking",
-    "Secure transaction processing",
+    "Secure trade execution",
     "Automated investment strategies",
-    "Comprehensive financial analytics",
+    "Comprehensive portfolio analytics",
   ];
 
   const slides = [
@@ -45,7 +43,7 @@ const Welcome = () => {
       title: "Your wealth,",
       titleHighlight: "perfectly managed",
       subtitle:
-        "Experience the future of banking. Manage your finances with confidence, security, and complete transparency.",
+        "Experience a focused trading platform with confidence, security, and complete transparency.",
     },
     {
       title: "Smart trading,",
@@ -57,7 +55,7 @@ const Welcome = () => {
       title: "Complete control,",
       titleHighlight: "always",
       subtitle:
-        "Monitor your entire financial ecosystem from one dashboard. Get insights that help you make better decisions.",
+        "Monitor your positions from one dashboard and get insights that help you make better decisions.",
     },
   ];
 
@@ -78,7 +76,7 @@ const Welcome = () => {
       <div className="welcome-container">
         {/* Hero Section */}
         <section className="welcome-hero">
-          <span className="welcome-badge">Secure Banking & Trading</span>
+          <span className="welcome-badge">Secure Trading Platform</span>
 
           <div className="welcome-slider">
             <div className="welcome-slide-wrapper">
@@ -137,7 +135,7 @@ const Welcome = () => {
           {/* Benefits Section */}
           <div className="welcome-benefits">
             <div className="welcome-benefits-content">
-              <h2 className="welcome-benefits-title">Why Choose VaultX?</h2>
+              <h2 className="welcome-benefits-title">Why Choose TradeFlow?</h2>
               <ul className="welcome-benefits-list">
                 {benefits.map((benefit, index) => (
                   <li key={index}>

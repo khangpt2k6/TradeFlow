@@ -148,7 +148,7 @@ const Dashboard = () => {
         <div className="dashboard-header">
           <div className="d-flex justify-content-between align-items-center">
             <div>
-              <h1 className="dashboard-title">Welcome to VaultX</h1>
+              <h1 className="dashboard-title">Welcome to TradeFlow</h1>
               <p className="dashboard-subtitle">
                 Your secure financial management platform
               </p>
