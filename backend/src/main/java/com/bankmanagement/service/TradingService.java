@@ -13,6 +13,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ public class TradingService {
     private final TradeRepository tradeRepository;
 
     private final Map<Long, ArrayDeque<Long>> recentOrderTimestamps = new ConcurrentHashMap<>();
+    private final ArrayDeque<Map<String, Object>> fraudAlerts = new ArrayDeque<>();
     private final AtomicLong processedOrders = new AtomicLong(0);
     private final AtomicLong rejectedOrders = new AtomicLong(0);
     private final AtomicLong retriesUsed = new AtomicLong(0);
@@ -53,6 +55,7 @@ public class TradingService {
 
         if (totalAmount.compareTo(MAX_ORDER_NOTIONAL) > 0) {
             rejectedOrders.incrementAndGet();
+            recordFraudAlert(userId, symbol, "MAX_NOTIONAL_EXCEEDED", "Order notional exceeded configured limit.");
             throw new IllegalArgumentException("Order blocked by risk engine: notional exceeds max allowed.");
         }
 
@@ -129,6 +132,39 @@ public class TradingService {
         return metrics;
     }
 
+    public List<Map<String, Object>> getRecentFraudAlerts() {
+        synchronized (fraudAlerts) {
+            return new ArrayList<>(fraudAlerts);
+        }
+    }
+
+    public Map<String, Object> buildOrderBook(String symbol) {
+        Asset asset = assetRepository.findBySymbol(symbol.toUpperCase())
+            .orElseThrow(() -> new IllegalArgumentException("Unknown symbol: " + symbol));
+
+        BigDecimal mid = asset.getCurrentPrice();
+        List<Map<String, Object>> bids = new ArrayList<>();
+        List<Map<String, Object>> asks = new ArrayList<>();
+
+        for (int level = 1; level <= 8; level++) {
+            BigDecimal spreadFactor = BigDecimal.valueOf(level).multiply(BigDecimal.valueOf(0.0008));
+            BigDecimal bidPrice = mid.multiply(BigDecimal.ONE.subtract(spreadFactor)).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal askPrice = mid.multiply(BigDecimal.ONE.add(spreadFactor)).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal quantity = BigDecimal.valueOf(Math.max(50, 600 - (level * 45))).setScale(2, RoundingMode.HALF_UP);
+
+            bids.add(Map.of("price", bidPrice, "quantity", quantity));
+            asks.add(Map.of("price", askPrice, "quantity", quantity.add(BigDecimal.valueOf(level * 4L))));
+        }
+
+        Map<String, Object> orderBook = new HashMap<>();
+        orderBook.put("symbol", symbol.toUpperCase());
+        orderBook.put("midPrice", mid);
+        orderBook.put("bids", bids);
+        orderBook.put("asks", asks);
+        orderBook.put("timestamp", Instant.now().toEpochMilli());
+        return orderBook;
+    }
+
     private Trade executeWithRetry(Long userId,
                                    Asset asset,
                                    Trade.TradeType tradeType,
@@ -200,6 +236,7 @@ public class TradingService {
 
             if (timestamps.size() >= MAX_ORDERS_PER_10S) {
                 rejectedOrders.incrementAndGet();
+                recordFraudAlert(userId, "MULTI", "RATE_LIMIT_TRIGGERED", "Order frequency exceeded anti-abuse threshold.");
                 throw new IllegalArgumentException("Order blocked by anti-abuse controls. Please slow down.");
             }
             timestamps.addLast(now);
@@ -237,5 +274,21 @@ public class TradingService {
             return BigDecimal.valueOf(number.doubleValue());
         }
         return new BigDecimal(String.valueOf(value));
+    }
+
+    private void recordFraudAlert(Long userId, String symbol, String type, String detail) {
+        Map<String, Object> event = new HashMap<>();
+        event.put("userId", userId);
+        event.put("symbol", symbol);
+        event.put("type", type);
+        event.put("detail", detail);
+        event.put("timestamp", Instant.now().toEpochMilli());
+
+        synchronized (fraudAlerts) {
+            fraudAlerts.addFirst(event);
+            while (fraudAlerts.size() > 100) {
+                fraudAlerts.removeLast();
+            }
+        }
     }
 }

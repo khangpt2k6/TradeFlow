@@ -18,6 +18,8 @@ const TradingDashboard = () => {
   });
   const [orderForm, setOrderForm] = useState({ symbol: "AAPL", side: "BUY", quantity: 1 });
   const [engineMetrics, setEngineMetrics] = useState({ processedOrders: 0, rejectedOrders: 0, retriesUsed: 0 });
+  const [orderBook, setOrderBook] = useState({ bids: [], asks: [], midPrice: 0, symbol: "" });
+  const [fraudAlerts, setFraudAlerts] = useState([]);
   const [message, setMessage] = useState("");
 
   const chartRef = useRef(null);
@@ -34,6 +36,7 @@ const TradingDashboard = () => {
   useEffect(() => {
     if (!selectedSymbol) return;
     fetchHistory(selectedSymbol);
+    fetchOrderBook(selectedSymbol);
   }, [selectedSymbol]);
 
   useEffect(() => {
@@ -71,6 +74,18 @@ const TradingDashboard = () => {
   useEffect(() => {
     renderD3Chart(series);
   }, [series]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMetrics();
+      fetchFraudAlerts();
+      if (selectedSymbol) {
+        fetchOrderBook(selectedSymbol);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [selectedSymbol]);
 
   const authHeaders = () => ({
     headers: {
@@ -124,6 +139,24 @@ const TradingDashboard = () => {
     }
   };
 
+  const fetchOrderBook = async (symbol) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/trading/order-book/${symbol}`, authHeaders());
+      setOrderBook(response.data);
+    } catch {
+      setOrderBook({ bids: [], asks: [], midPrice: 0, symbol: symbol || "" });
+    }
+  };
+
+  const fetchFraudAlerts = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/trading/fraud-alerts`, authHeaders());
+      setFraudAlerts(response.data || []);
+    } catch {
+      setFraudAlerts([]);
+    }
+  };
+
   const placeOrder = async (event) => {
     event.preventDefault();
     setMessage("");
@@ -132,6 +165,8 @@ const TradingDashboard = () => {
       const execution = response.data.execution;
       setMessage(`${execution.side} ${execution.quantity} ${execution.symbol} executed @ ${execution.price}`);
       await Promise.all([fetchPortfolio(), fetchMetrics()]);
+      fetchOrderBook(orderForm.symbol);
+      fetchFraudAlerts();
     } catch (error) {
       setMessage(error?.response?.data?.message || "Order failed");
     }
@@ -281,6 +316,30 @@ const TradingDashboard = () => {
           {message && <p className="status-message">{message}</p>}
         </section>
 
+        <section className="panel">
+          <h3>Order Book ({orderBook.symbol || selectedSymbol})</h3>
+          <div className="orderbook-grid">
+            <div>
+              <h4>Bids</h4>
+              {(orderBook.bids || []).map((row) => (
+                <div key={`bid-${row.price}`} className="book-row bid">
+                  <span>{Number(row.price).toFixed(2)}</span>
+                  <span>{Number(row.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <h4>Asks</h4>
+              {(orderBook.asks || []).map((row) => (
+                <div key={`ask-${row.price}`} className="book-row ask">
+                  <span>{Number(row.price).toFixed(2)}</span>
+                  <span>{Number(row.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="panel full">
           <h3>Portfolio Snapshot</h3>
           <div className="portfolio-meta">
@@ -303,6 +362,21 @@ const TradingDashboard = () => {
                 <span>{Number(position.quantity).toFixed(4)}</span>
                 <span>${Number(position.currentPrice).toFixed(2)}</span>
                 <span>${Number(position.marketValue).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel full">
+          <h3>Risk and Fraud Alerts</h3>
+          <div className="alerts-shell">
+            {fraudAlerts.length === 0 && <p className="muted">No risk alerts in the current session.</p>}
+            {fraudAlerts.map((alert, index) => (
+              <div key={`${alert.timestamp}-${index}`} className="alert-item">
+                <span className="alert-type">{alert.type}</span>
+                <span>{alert.symbol}</span>
+                <span>{alert.detail}</span>
+                <span>{new Date(alert.timestamp).toLocaleTimeString()}</span>
               </div>
             ))}
           </div>

@@ -73,4 +73,21 @@ public class TradingController {
     public ResponseEntity<?> metrics() {
         return ResponseEntity.ok(tradingService.getEngineMetrics());
     }
+
+    @GetMapping("/order-book/{symbol}")
+    public ResponseEntity<?> orderBook(@PathVariable String symbol) {
+        try {
+            return ResponseEntity.ok(tradingService.buildOrderBook(symbol));
+        } catch (Exception ex) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", ex.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/fraud-alerts")
+    public ResponseEntity<?> fraudAlerts() {
+        return ResponseEntity.ok(tradingService.getRecentFraudAlerts());
+    }
 }
