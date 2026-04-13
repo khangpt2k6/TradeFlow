@@ -494,6 +494,47 @@ body::after {
     backdrop-filter: blur(16px);
   }
 
+  .welcome-video-frame {
+    position: relative;
+    margin-top: 1rem;
+    border-radius: 1.25rem;
+    overflow: hidden;
+    border: 1px solid rgba(126, 173, 219, 0.35);
+    box-shadow: 0 20px 35px rgba(42, 94, 146, 0.2);
+    min-height: 220px;
+  }
+
+  .welcome-video {
+    display: block;
+    width: 100%;
+    height: clamp(220px, 35vw, 360px);
+    object-fit: cover;
+  }
+
+  .welcome-video-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    padding: 1rem 1.2rem;
+    color: #f8fcff;
+    background: linear-gradient(180deg, rgba(8, 23, 43, 0.08) 20%, rgba(8, 23, 43, 0.68) 100%);
+  }
+
+  .welcome-video-overlay h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+
+  .welcome-video-overlay p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(236, 246, 255, 0.92);
+  }
+
   .welcome-badge {
     @apply inline-flex rounded-full px-4 py-1 text-xs font-bold uppercase tracking-[0.16em];
     color: #1b4d79;

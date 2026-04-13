@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import tradingVideo from "../trading.mp4";
 import {
   ShieldLock,
   LightningCharge,
@@ -77,6 +78,21 @@ const Welcome = () => {
         {/* Hero Section */}
         <section className="welcome-hero">
           <span className="welcome-badge">Secure Trading Platform</span>
+
+          <div className="welcome-video-frame">
+            <video
+              className="welcome-video"
+              src={tradingVideo}
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
+            <div className="welcome-video-overlay">
+              <h2>See TradeFlow in Action</h2>
+              <p>Live market-focused visuals powered by your `trading.mp4` asset.</p>
+            </div>
+          </div>
 
           <div className="welcome-slider">
             <div className="welcome-slide-wrapper">

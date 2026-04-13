@@ -16,3 +16,19 @@ A modern, full-stack trading platform built with **Spring Boot** backend and **R
 ![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.2.3-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white)
 
+## Supabase Auth + Data Setup
+
+1. Copy `frontend/.env.example` to `frontend/.env` and set:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_API_URL` (optional override for backend URL)
+2. In Supabase SQL Editor, run `supabase/schema.sql`.
+3. In Supabase dashboard, enable OAuth providers:
+   - **Google**
+   - **GitHub**
+4. Add redirect URLs in Supabase Auth settings:
+   - `http://localhost:5173`
+   - your deployed frontend URL
+
+TradeFlow now uses Supabase authentication (email/password + Google + GitHub) and stores user profile + executed trade records in Supabase.
+
