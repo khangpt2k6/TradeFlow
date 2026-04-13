@@ -4,7 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { API_BASE_URL } from "../config/api";
-import "../styles/auth.css";
 
 const Login = () => {
   const [formData, setFormData] = useState({

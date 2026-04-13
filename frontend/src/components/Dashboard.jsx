@@ -19,7 +19,6 @@ import {
   Legend,
 } from "recharts";
 import { API_BASE_URL } from "../config/api";
-import "../styles/dashboard.css";
 
 const Dashboard = () => {
   const navigate = useNavigate();

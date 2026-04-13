@@ -4,7 +4,6 @@ import * as d3 from "d3";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { API_BASE_URL } from "../config/api";
-import "../styles/trading.css";
 
 const TradingDashboard = () => {
   const [assets, setAssets] = useState([]);

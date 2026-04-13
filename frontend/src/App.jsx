@@ -1,8 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import "bootstrap/dist/css/bootstrap.min.css";
 
 import Navigation from "./components/Navigation";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -25,7 +23,7 @@ function AppContent() {
   const isDashboard = ["/", "/dashboard"].includes(location.pathname);
 
   return (
-    <div className="App">
+    <div className="App min-h-screen bg-slate-950 text-slate-100">
       <Navigation />
 
       {/* Main Content */}
@@ -54,7 +52,7 @@ function AppContent() {
             />
           </Routes>
         ) : (
-          <div className="container-fluid mt-4">
+          <div className="mx-auto mt-20 w-full max-w-[1400px] px-4">
             <Routes>
               {/* Protected routes with container wrapper */}
               <Route

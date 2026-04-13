@@ -12,7 +12,6 @@ import {
   CreditCard,
   Receipt,
 } from "react-bootstrap-icons";
-import "../styles/sidebar.css";
 
 const Sidebar = ({ isOpen, onClose, isCollapsed, onToggleCollapse }) => {
   const bankingViewItems = [

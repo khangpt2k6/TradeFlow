@@ -14,7 +14,6 @@ import {
   X,
   ChevronDown,
 } from "react-bootstrap-icons";
-import "../styles/navigation.css";
 
 const Navigation = () => {
   const navigate = useNavigate();

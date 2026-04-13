@@ -8,7 +8,6 @@ import {
   GraphUp,
   CheckCircle,
 } from "react-bootstrap-icons";
-import "../styles/welcome.css";
 
 const Welcome = () => {
   const [currentSlide, setCurrentSlide] = useState(0);

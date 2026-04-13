@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import { ArrowRight, Check } from "react-bootstrap-icons";
 import { API_BASE_URL } from "../config/api";
-import "../styles/auth.css";
 
 const Register = () => {
   const [currentStep, setCurrentStep] = useState(1);
