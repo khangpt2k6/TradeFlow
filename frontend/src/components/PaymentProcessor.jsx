@@ -43,7 +43,7 @@ const PaymentProcessor = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        toast.error("Please login first");
+        toast.error("This flow expects a saved session token.");
         return;
       }
 

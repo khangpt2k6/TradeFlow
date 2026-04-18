@@ -59,7 +59,7 @@ const AccountForm = () => {
       console.error("Error fetching account:", error);
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Unauthorized. Please log in again.");
-        navigate("/login");
+        navigate("/trading");
       } else {
         toast.error("Failed to fetch account data");
       }
@@ -105,7 +105,7 @@ const AccountForm = () => {
       console.error("Error saving account:", error);
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Unauthorized. Please log in again.");
-        navigate("/login");
+        navigate("/trading");
       } else {
         toast.error(`Failed to ${isEdit ? "update" : "create"} account`);
       }

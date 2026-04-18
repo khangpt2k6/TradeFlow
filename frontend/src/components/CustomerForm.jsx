@@ -43,7 +43,7 @@ const CustomerForm = () => {
       console.error("Error fetching customer:", error);
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Unauthorized. Please log in again.");
-        navigate("/login");
+        navigate("/trading");
       } else {
         toast.error("Failed to fetch customer data");
       }
@@ -82,7 +82,7 @@ const CustomerForm = () => {
       console.error("Error saving customer:", error);
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Unauthorized. Please log in again.");
-        navigate("/login");
+        navigate("/trading");
       } else {
         toast.error(`Failed to ${isEdit ? "update" : "create"} customer`);
       }

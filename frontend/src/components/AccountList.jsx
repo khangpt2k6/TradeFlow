@@ -31,7 +31,7 @@ const AccountList = () => {
     // Check authentication status
     const token = localStorage.getItem("token");
     if (!token) {
-      navigate("/login");
+      navigate("/trading");
       return;
     }
     setIsAuthenticated(true);
@@ -75,7 +75,7 @@ const AccountList = () => {
       console.error("Error fetching accounts:", error);
       if (error.response?.status === 401) {
         localStorage.removeItem("token");
-        navigate("/login");
+        navigate("/trading");
         return;
       }
       toast.error("Failed to fetch accounts");
@@ -135,7 +135,7 @@ const AccountList = () => {
         toast.error("Unauthorized. Please log in again.");
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
-        navigate("/login");
+        navigate("/trading");
       } else {
         toast.error("Failed to delete account");
       }
@@ -163,7 +163,7 @@ const AccountList = () => {
         <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
-        <p className="mt-3">Redirecting to login...</p>
+        <p className="mt-3">Redirecting...</p>
       </div>
     );
   }

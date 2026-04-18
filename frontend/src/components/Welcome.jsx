@@ -14,9 +14,9 @@ const Welcome = () => {
   const features = [
     {
       icon: ShieldLock,
-      title: "Enterprise-grade security",
+      title: "Simulation-grade controls",
       description:
-        "Multi-factor authentication, continuous monitoring, and 256-bit encryption protect every action.",
+        "Concurrent matching, retry pipelines, and fraud-style alerts exercise the engine under stress without a login wall.",
     },
     {
       icon: LightningCharge,
@@ -34,9 +34,9 @@ const Welcome = () => {
 
   const benefits = [
     "Real-time portfolio tracking",
-    "Secure trade execution",
-    "Automated investment strategies",
-    "Comprehensive portfolio analytics",
+    "In-memory simulated execution",
+    "Streaming market ticks",
+    "Live order book visualization",
   ];
 
   const slides = [
@@ -111,11 +111,11 @@ const Welcome = () => {
             </div>
 
             <div className="welcome-cta">
-              <Link to="/register" className="welcome-btn welcome-btn-primary">
-                Get Started
+              <Link to="/trading" className="welcome-btn welcome-btn-primary">
+                Open trading sim
               </Link>
-              <Link to="/login" className="welcome-btn welcome-btn-secondary">
-                Learn More
+              <Link to="/trading" className="welcome-btn welcome-btn-secondary">
+                Live dashboard
               </Link>
             </div>
 
@@ -160,8 +160,8 @@ const Welcome = () => {
                   </li>
                 ))}
               </ul>
-              <Link to="/register" className="welcome-btn welcome-btn-primary">
-                Start Your Journey
+              <Link to="/trading" className="welcome-btn welcome-btn-primary">
+                Launch simulator
               </Link>
             </div>
           </div>

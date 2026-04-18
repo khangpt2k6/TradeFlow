@@ -4,11 +4,8 @@ import * as d3 from "d3";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { API_BASE_URL } from "../config/api";
-import { useAuth } from "../contexts/AuthContext";
-import { logTradeExecution, upsertUserProfile } from "../services/supabaseData";
 
 const TradingDashboard = () => {
-  const { user } = useAuth();
   const [assets, setAssets] = useState([]);
   const [selectedSymbol, setSelectedSymbol] = useState("AAPL");
   const [series, setSeries] = useState([]);
@@ -68,19 +65,6 @@ const TradingDashboard = () => {
     client.activate();
     return () => client.deactivate();
   }, [selectedSymbol]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    upsertUserProfile({
-      userId: user.id,
-      email: user.email,
-      firstName: user.user_metadata?.first_name,
-      lastName: user.user_metadata?.last_name,
-    }).catch((error) => {
-      console.error("Profile sync failed:", error.message);
-    });
-  }, [user]);
 
   useEffect(() => {
     renderD3Chart(series);
@@ -171,17 +155,6 @@ const TradingDashboard = () => {
       const response = await axios.post(`${API_BASE_URL}/trading/orders`, orderForm, authHeaders());
       const execution = response.data.execution;
       setMessage(`${execution.side} ${execution.quantity} ${execution.symbol} executed @ ${execution.price}`);
-      if (user?.id) {
-        logTradeExecution({
-          userId: user.id,
-          symbol: execution.symbol,
-          side: execution.side,
-          quantity: Number(execution.quantity),
-          price: Number(execution.price),
-        }).catch((error) => {
-          console.error("Trade persistence failed:", error.message);
-        });
-      }
       await Promise.all([fetchPortfolio(), fetchMetrics()]);
       fetchOrderBook(orderForm.symbol);
       fetchFraudAlerts();

@@ -57,7 +57,7 @@ const TransactionList = () => {
         toast.error("Unauthorized. Please log in again.");
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
-        navigate("/login");
+        navigate("/trading");
       } else {
         toast.error("Failed to fetch transactions");
       }

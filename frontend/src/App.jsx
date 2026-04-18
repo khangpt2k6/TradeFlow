@@ -3,68 +3,26 @@ import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from "r
 import { ToastContainer } from "react-toastify";
 
 import Navigation from "./components/Navigation";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Login from "./components/Login";
-import Register from "./components/Register";
 import Welcome from "./components/Welcome";
 import TradingDashboard from "./components/TradingDashboard";
 
 function AppContent() {
   const location = useLocation();
-  const isAuthPage = ["/login", "/register", "/welcome"].includes(location.pathname);
+  const isAuthPage = ["/welcome"].includes(location.pathname);
   const isTradingPage = ["/", "/trading", "/portfolio", "/trade-history", "/funding"].includes(location.pathname);
 
   return (
     <div className="App min-h-screen">
       <Navigation />
 
-      {/* Main Content */}
       <div className={`main-content ${isAuthPage || isTradingPage ? "auth-layout" : ""}`}>
         <Routes>
-          {/* Public and trading routes - no container wrapper */}
           <Route path="/welcome" element={<Welcome />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <TradingDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trading"
-            element={
-              <ProtectedRoute>
-                <TradingDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/portfolio"
-            element={
-              <ProtectedRoute>
-                <TradingDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trade-history"
-            element={
-              <ProtectedRoute>
-                <TradingDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/funding"
-            element={
-              <ProtectedRoute>
-                <TradingDashboard />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<TradingDashboard />} />
+          <Route path="/trading" element={<TradingDashboard />} />
+          <Route path="/portfolio" element={<TradingDashboard />} />
+          <Route path="/trade-history" element={<TradingDashboard />} />
+          <Route path="/funding" element={<TradingDashboard />} />
           <Route path="*" element={<Navigate to="/trading" replace />} />
         </Routes>
       </div>

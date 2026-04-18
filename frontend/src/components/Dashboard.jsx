@@ -38,7 +38,7 @@ const Dashboard = () => {
     // Check authentication status
     const token = localStorage.getItem("token");
     if (!token) {
-      navigate("/login");
+      navigate("/trading");
       return;
     }
     setIsAuthenticated(true);
@@ -61,7 +61,7 @@ const Dashboard = () => {
       console.error("Error fetching dashboard stats:", error);
       if (error.response?.status === 401) {
         localStorage.removeItem("token");
-        navigate("/login");
+        navigate("/trading");
         return;
       }
       // Set default values if API fails

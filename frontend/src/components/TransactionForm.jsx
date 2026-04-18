@@ -64,7 +64,7 @@ const TransactionForm = () => {
       console.error("Error fetching transaction:", error);
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Unauthorized. Please log in again.");
-        navigate("/login");
+        navigate("/trading");
       } else {
         toast.error("Failed to fetch transaction data");
       }
@@ -111,7 +111,7 @@ const TransactionForm = () => {
       console.error("Error saving transaction:", error);
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Unauthorized. Please log in again.");
-        navigate("/login");
+        navigate("/trading");
       } else {
         toast.error(`Failed to ${isEdit ? "update" : "create"} transaction`);
       }

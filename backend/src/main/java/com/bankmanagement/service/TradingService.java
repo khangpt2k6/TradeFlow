@@ -3,9 +3,6 @@ package com.bankmanagement.service;
 import com.bankmanagement.model.Asset;
 import com.bankmanagement.model.Trade;
 import com.bankmanagement.repository.AssetRepository;
-import com.bankmanagement.repository.TradeRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -14,9 +11,11 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -25,9 +24,14 @@ public class TradingService {
 
     private static final BigDecimal MAX_ORDER_NOTIONAL = BigDecimal.valueOf(250_000);
     private static final int MAX_ORDERS_PER_10S = 40;
+    /** Anonymous simulation session — no login or persisted user row required. */
+    private static final long SIMULATION_USER_ID = 1L;
+    private static final int MAX_TRADES_IN_MEMORY = 20_000;
 
     private final AssetRepository assetRepository;
-    private final TradeRepository tradeRepository;
+
+    private final List<Trade> simulatedTrades = new ArrayList<>();
+    private final AtomicLong syntheticTradeIds = new AtomicLong(1);
 
     private final Map<Long, ArrayDeque<Long>> recentOrderTimestamps = new ConcurrentHashMap<>();
     private final ArrayDeque<Map<String, Object>> fraudAlerts = new ArrayDeque<>();
@@ -35,13 +39,12 @@ public class TradingService {
     private final AtomicLong rejectedOrders = new AtomicLong(0);
     private final AtomicLong retriesUsed = new AtomicLong(0);
 
-    public TradingService(AssetRepository assetRepository, TradeRepository tradeRepository) {
+    public TradingService(AssetRepository assetRepository) {
         this.assetRepository = assetRepository;
-        this.tradeRepository = tradeRepository;
     }
 
     public Map<String, Object> placeOrder(String symbol, String side, BigDecimal quantity) {
-        Long userId = currentUserId();
+        Long userId = SIMULATION_USER_ID;
         validateOrderRate(userId);
         validateQuantity(quantity);
 
@@ -76,12 +79,18 @@ public class TradingService {
     }
 
     public List<Trade> getRecentOrders() {
-        return tradeRepository.findTop50ByUserIdOrderByExecutedAtDesc(currentUserId());
+        synchronized (simulatedTrades) {
+            return simulatedTrades.stream()
+                .filter(t -> Objects.equals(SIMULATION_USER_ID, t.getUserId()))
+                .sorted(Comparator.comparing(Trade::getExecutedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(50)
+                .toList();
+        }
     }
 
     public Map<String, Object> getPortfolioSummary() {
-        Long userId = currentUserId();
-        List<Map<String, Object>> grouped = tradeRepository.summarizePositions(userId);
+        Long userId = SIMULATION_USER_ID;
+        List<Map<String, Object>> grouped = summarizePositionsInMemory(userId);
 
         List<Map<String, Object>> positions = grouped.stream()
             .map(position -> {
@@ -103,7 +112,7 @@ public class TradingService {
             .filter(row -> row != null)
             .toList();
 
-        BigDecimal grossVolume = tradeRepository.sumCompletedVolumeByUserId(userId);
+        BigDecimal grossVolume = sumCompletedVolumeInMemory(userId);
         BigDecimal currentValue = positions.stream()
             .map(row -> (BigDecimal) row.get("marketValue"))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -121,7 +130,7 @@ public class TradingService {
 
     public Map<String, Object> getEngineMetrics() {
         LocalDateTime tenSecondsAgo = LocalDateTime.now().minusSeconds(10);
-        long recentOrders = tradeRepository.countByExecutedAtAfter(tenSecondsAgo);
+        long recentOrders = countTradesExecutedAfter(tenSecondsAgo);
 
         Map<String, Object> metrics = new HashMap<>();
         metrics.put("processedOrders", processedOrders.get());
@@ -165,6 +174,59 @@ public class TradingService {
         return orderBook;
     }
 
+    private List<Map<String, Object>> summarizePositionsInMemory(Long userId) {
+        Map<Long, BigDecimal> netByAsset = new HashMap<>();
+        synchronized (simulatedTrades) {
+            for (Trade t : simulatedTrades) {
+                if (!userId.equals(t.getUserId()) || t.getStatus() != Trade.TradeStatus.COMPLETED) {
+                    continue;
+                }
+                BigDecimal delta = t.getTradeType() == Trade.TradeType.BUY
+                    ? t.getQuantity()
+                    : t.getQuantity().negate();
+                netByAsset.merge(t.getAssetId(), delta, BigDecimal::add);
+            }
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map.Entry<Long, BigDecimal> e : netByAsset.entrySet()) {
+            if (e.getValue().compareTo(BigDecimal.ZERO) == 0) {
+                continue;
+            }
+            Map<String, Object> row = new HashMap<>();
+            row.put("assetId", e.getKey());
+            row.put("netQuantity", e.getValue());
+            out.add(row);
+        }
+        return out;
+    }
+
+    private BigDecimal sumCompletedVolumeInMemory(Long userId) {
+        synchronized (simulatedTrades) {
+            return simulatedTrades.stream()
+                .filter(t -> userId.equals(t.getUserId()) && t.getStatus() == Trade.TradeStatus.COMPLETED)
+                .map(Trade::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+    }
+
+    private long countTradesExecutedAfter(LocalDateTime since) {
+        synchronized (simulatedTrades) {
+            return simulatedTrades.stream()
+                .filter(t -> t.getExecutedAt() != null && t.getExecutedAt().isAfter(since))
+                .count();
+        }
+    }
+
+    private void persistSimulatedTrade(Trade trade) {
+        synchronized (simulatedTrades) {
+            trade.setTradeId(syntheticTradeIds.getAndIncrement());
+            simulatedTrades.add(trade);
+            while (simulatedTrades.size() > MAX_TRADES_IN_MEMORY) {
+                simulatedTrades.remove(0);
+            }
+        }
+    }
+
     private Trade executeWithRetry(Long userId,
                                    Asset asset,
                                    Trade.TradeType tradeType,
@@ -194,7 +256,8 @@ public class TradingService {
                 trade.setExecutedAt(LocalDateTime.now());
                 trade.setStatus(Trade.TradeStatus.COMPLETED);
                 trade.setNotes("Executed via simulation engine");
-                return tradeRepository.save(trade);
+                persistSimulatedTrade(trade);
+                return trade;
             } catch (RuntimeException ex) {
                 lastError = ex;
                 if (attempt < 3) {
@@ -220,7 +283,7 @@ public class TradingService {
         failed.setStatus(Trade.TradeStatus.FAILED);
         failed.setNotes(lastError != null ? lastError.getMessage() : "Execution failed");
         rejectedOrders.incrementAndGet();
-        tradeRepository.save(failed);
+        persistSimulatedTrade(failed);
         throw new IllegalStateException("Failed to execute order after retries");
     }
 
@@ -250,20 +313,6 @@ public class TradingService {
         if (quantity.compareTo(BigDecimal.valueOf(1_000_000)) > 0) {
             throw new IllegalArgumentException("Quantity exceeds simulation limits.");
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Long currentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getDetails() == null) {
-            throw new IllegalStateException("Authentication details missing");
-        }
-        Map<String, Object> details = (Map<String, Object>) authentication.getDetails();
-        Object raw = details.get("userId");
-        if (raw == null) {
-            throw new IllegalStateException("No userId in authentication context");
-        }
-        return ((Number) raw).longValue();
     }
 
     private BigDecimal asBigDecimal(Object value) {
