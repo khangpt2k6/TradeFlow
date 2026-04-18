@@ -87,7 +87,9 @@ public class MarketDataService {
         if (history == null) {
             return List.of();
         }
-        return new ArrayList<>(history);
+        synchronized (history) {
+            return new ArrayList<>(history);
+        }
     }
 
     private Asset applyPriceMovement(Asset asset) {
@@ -129,16 +131,16 @@ public class MarketDataService {
     }
 
     private void addHistoryPoint(String symbol, BigDecimal price) {
-        priceHistory.computeIfAbsent(symbol, k -> new ArrayDeque<>());
-        Deque<Map<String, Object>> history = priceHistory.get(symbol);
+        Deque<Map<String, Object>> history = priceHistory.computeIfAbsent(symbol, k -> new ArrayDeque<>());
+        synchronized (history) {
+            Map<String, Object> point = new HashMap<>();
+            point.put("timestamp", Instant.now().toEpochMilli());
+            point.put("price", price);
+            history.addLast(point);
 
-        Map<String, Object> point = new HashMap<>();
-        point.put("timestamp", Instant.now().toEpochMilli());
-        point.put("price", price);
-        history.addLast(point);
-
-        while (history.size() > HISTORY_LIMIT) {
-            history.removeFirst();
+            while (history.size() > HISTORY_LIMIT) {
+                history.removeFirst();
+            }
         }
     }
 

@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,10 +24,13 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TradingService {
 
     private static final BigDecimal MAX_ORDER_NOTIONAL = BigDecimal.valueOf(250_000);
+    /** Starting USD cash for the anonymous simulation session (paper money). */
+    private static final BigDecimal SESSION_STARTING_CASH = BigDecimal.valueOf(100_000);
     private static final int MAX_ORDERS_PER_10S = 40;
     /** Anonymous simulation session — no login or persisted user row required. */
     private static final long SIMULATION_USER_ID = 1L;
     private static final int MAX_TRADES_IN_MEMORY = 20_000;
+    private static final int MAX_TAPE_ENTRIES = 200;
 
     private final AssetRepository assetRepository;
 
@@ -38,6 +42,7 @@ public class TradingService {
     private final AtomicLong processedOrders = new AtomicLong(0);
     private final AtomicLong rejectedOrders = new AtomicLong(0);
     private final AtomicLong retriesUsed = new AtomicLong(0);
+    private final ArrayDeque<Map<String, Object>> timeAndSales = new ArrayDeque<>();
 
     public TradingService(AssetRepository assetRepository) {
         this.assetRepository = assetRepository;
@@ -117,15 +122,29 @@ public class TradingService {
             .map(row -> (BigDecimal) row.get("marketValue"))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        BigDecimal sessionCash = computeSessionCash(userId);
+        BigDecimal equity = sessionCash.add(currentValue).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal sessionPnl = equity.subtract(SESSION_STARTING_CASH).setScale(2, RoundingMode.HALF_UP);
+
         Map<String, Object> summary = new HashMap<>();
         summary.put("positions", positions);
         summary.put("positionCount", positions.size());
         summary.put("grossVolume", grossVolume);
         summary.put("currentValue", currentValue);
+        summary.put("startingCash", SESSION_STARTING_CASH);
+        summary.put("cash", sessionCash);
+        summary.put("equity", equity);
+        summary.put("sessionPnl", sessionPnl);
         summary.put("processedOrders", processedOrders.get());
         summary.put("rejectedOrders", rejectedOrders.get());
         summary.put("retriesUsed", retriesUsed.get());
         return summary;
+    }
+
+    public List<Map<String, Object>> getTimeAndSales() {
+        synchronized (timeAndSales) {
+            return new ArrayList<>(timeAndSales);
+        }
     }
 
     public Map<String, Object> getEngineMetrics() {
@@ -209,6 +228,30 @@ public class TradingService {
         }
     }
 
+    /**
+     * Paper cash remaining after completed fills: starting balance minus buys (incl. commission) plus sell proceeds (net of commission).
+     */
+    private BigDecimal computeSessionCash(Long userId) {
+        List<Trade> fills;
+        synchronized (simulatedTrades) {
+            fills = simulatedTrades.stream()
+                .filter(t -> userId.equals(t.getUserId()) && t.getStatus() == Trade.TradeStatus.COMPLETED)
+                .sorted(Comparator.comparing(Trade::getExecutedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        }
+        BigDecimal cash = SESSION_STARTING_CASH;
+        for (Trade t : fills) {
+            BigDecimal total = t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO;
+            BigDecimal comm = t.getCommission() != null ? t.getCommission() : BigDecimal.ZERO;
+            if (t.getTradeType() == Trade.TradeType.BUY) {
+                cash = cash.subtract(total).subtract(comm);
+            } else {
+                cash = cash.add(total).subtract(comm);
+            }
+        }
+        return cash.setScale(2, RoundingMode.HALF_UP);
+    }
+
     private long countTradesExecutedAfter(LocalDateTime since) {
         synchronized (simulatedTrades) {
             return simulatedTrades.stream()
@@ -217,12 +260,34 @@ public class TradingService {
         }
     }
 
-    private void persistSimulatedTrade(Trade trade) {
+    private void persistSimulatedTrade(Trade trade, String symbol) {
         synchronized (simulatedTrades) {
             trade.setTradeId(syntheticTradeIds.getAndIncrement());
             simulatedTrades.add(trade);
             while (simulatedTrades.size() > MAX_TRADES_IN_MEMORY) {
                 simulatedTrades.remove(0);
+            }
+        }
+        recordTapeEntry(trade, symbol);
+    }
+
+    private void recordTapeEntry(Trade trade, String symbol) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("timestamp", trade.getExecutedAt() != null
+            ? trade.getExecutedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            : Instant.now().toEpochMilli());
+        row.put("tradeId", trade.getTradeId());
+        row.put("symbol", symbol);
+        row.put("side", trade.getTradeType() != null ? trade.getTradeType().name() : "");
+        row.put("quantity", trade.getQuantity());
+        row.put("price", trade.getPricePerUnit());
+        row.put("status", trade.getStatus() != null ? trade.getStatus().name() : "");
+        row.put("notes", trade.getNotes());
+
+        synchronized (timeAndSales) {
+            timeAndSales.addFirst(row);
+            while (timeAndSales.size() > MAX_TAPE_ENTRIES) {
+                timeAndSales.removeLast();
             }
         }
     }
@@ -256,7 +321,7 @@ public class TradingService {
                 trade.setExecutedAt(LocalDateTime.now());
                 trade.setStatus(Trade.TradeStatus.COMPLETED);
                 trade.setNotes("Executed via simulation engine");
-                persistSimulatedTrade(trade);
+                persistSimulatedTrade(trade, asset.getSymbol());
                 return trade;
             } catch (RuntimeException ex) {
                 lastError = ex;
@@ -283,7 +348,7 @@ public class TradingService {
         failed.setStatus(Trade.TradeStatus.FAILED);
         failed.setNotes(lastError != null ? lastError.getMessage() : "Execution failed");
         rejectedOrders.incrementAndGet();
-        persistSimulatedTrade(failed);
+        persistSimulatedTrade(failed, asset.getSymbol());
         throw new IllegalStateException("Failed to execute order after retries");
     }
 

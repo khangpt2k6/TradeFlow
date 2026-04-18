@@ -88,19 +88,98 @@ body::after {
   }
 
   .navbar-brand {
-    @apply flex items-center gap-2 text-lg font-bold no-underline;
+    @apply flex min-w-0 items-center gap-2.5 text-lg font-bold no-underline;
     color: #0f2f56;
   }
 
+  .navbar-brand-copy {
+    @apply flex min-w-0 flex-col leading-tight;
+  }
+
+  .navbar-brand-text {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    color: inherit;
+  }
+
+  .navbar-brand-tagline {
+    @apply hidden text-[0.62rem] font-semibold uppercase sm:block;
+    letter-spacing: 0.18em;
+    color: #5e7b99;
+  }
+
+  .navbar-container--shell {
+    @apply gap-3;
+  }
+
+  .navbar-nav-cluster {
+    @apply hidden items-center gap-0.5 rounded-2xl border p-1 md:flex;
+    border-color: rgba(126, 173, 219, 0.45);
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow: 0 4px 20px rgba(60, 110, 160, 0.12);
+  }
+
+  .nav-tab {
+    @apply inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold no-underline transition;
+    color: #3d5c7a;
+  }
+
+  .nav-tab:hover {
+    color: #0f2f56;
+    background: rgba(255, 255, 255, 0.75);
+  }
+
+  .nav-tab.is-active {
+    color: #042f4a;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(232, 248, 255, 0.92));
+    box-shadow: 0 4px 14px rgba(45, 141, 255, 0.18);
+  }
+
+  .nav-tab svg {
+    color: #2d8dff;
+    opacity: 0.9;
+  }
+
+  .nav-tab.is-active svg {
+    color: #1b6fd4;
+  }
+
   .navbar-logo-icon {
-    @apply grid h-8 w-8 place-items-center rounded-xl text-sm font-black;
+    @apply grid h-8 w-8 place-items-center rounded-xl text-xs font-black leading-none tracking-tight;
     color: #0d2d4f;
     background: linear-gradient(135deg, #8fd8ff 0%, #d5f4ff 100%);
     animation: pulseGlow 3s ease-in-out infinite;
   }
 
+  .navbar-brand--lockup {
+    @apply items-center gap-3;
+  }
+
+  .navbar-logo-mark {
+    @apply inline-flex gap-0.5 rounded-xl p-0.5;
+    background: linear-gradient(135deg, rgba(45, 141, 255, 0.2), rgba(127, 243, 255, 0.35));
+    box-shadow: 0 0 0 1px rgba(126, 173, 219, 0.35);
+  }
+
+  .navbar-logo-glyph {
+    @apply grid h-7 w-5 place-items-center rounded-md text-[0.55rem] font-black;
+    color: #063a5c;
+    background: linear-gradient(180deg, #d5f4ff 0%, #8fd8ff 100%);
+  }
+
   .navbar-menu-desktop {
-    @apply hidden items-center gap-2 md:flex;
+    @apply hidden items-center gap-3 md:flex;
+  }
+
+  .nav-link--ghost {
+    @apply inline-flex items-center rounded-xl px-3 py-2 text-sm font-semibold no-underline transition;
+    color: #5e7b99;
+  }
+
+  .nav-link--ghost:hover {
+    color: #0f2f56;
+    background: rgba(255, 255, 255, 0.55);
   }
 
   .nav-link {
@@ -398,7 +477,7 @@ body::after {
   }
 
   .dashboard-container,
-  .trading-grid {
+  .trading-layout {
     @apply mx-auto w-full max-w-7xl;
   }
 
@@ -432,22 +511,81 @@ body::after {
     color: #5a7897;
   }
 
-  .trading-header h1,
   .dashboard-title,
   .welcome-title {
     @apply text-3xl font-black tracking-tight;
     color: #0f2f56;
   }
 
-  .trading-header p,
   .dashboard-subtitle,
   .welcome-subtitle {
     @apply mt-1 text-sm;
     color: #607f9d;
   }
 
-  .trading-grid {
-    @apply mt-4 grid gap-4 lg:grid-cols-2;
+  /* Trading: main column (market + book) + full-height order rail — avoids empty half-row. */
+  .trading-layout {
+    @apply mt-4 grid gap-4;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .trading-main-stack {
+    @apply flex min-w-0 flex-col gap-4;
+  }
+
+  .trading-side-rail {
+    @apply min-w-0;
+  }
+
+  @media (min-width: 1024px) {
+    .trading-layout {
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      grid-template-rows: auto auto auto auto;
+      align-items: stretch;
+    }
+
+    .trading-main-stack {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+    }
+
+    .trading-side-rail {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .trading-panel-order.panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .trading-panel-portfolio {
+      grid-column: 1 / -1;
+      grid-row: 3;
+    }
+
+    .trading-panel-alerts {
+      grid-column: 1 / -1;
+      grid-row: 4;
+    }
+  }
+
+  .order-form--rail {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .order-form--rail label,
+  .order-form--rail button[type="submit"] {
+    width: 100%;
+  }
+
+  .metrics-grid--rail {
+    margin-top: auto;
+    grid-template-columns: 1fr;
   }
 
   .panel {
@@ -562,6 +700,19 @@ body::after {
     border: 1px solid rgba(126, 173, 219, 0.4);
   }
 
+  .welcome-slide-wrapper {
+    position: relative;
+    min-height: 7.5rem;
+  }
+
+  .welcome-slide {
+    display: none;
+  }
+
+  .welcome-slide.active {
+    display: block;
+  }
+
   .welcome-features {
     @apply mt-6 grid gap-4 md:grid-cols-3;
   }
@@ -599,5 +750,19 @@ body::after {
     @apply mt-6 rounded-2xl border p-4;
     border-color: rgba(126, 173, 219, 0.35);
     background: rgba(255, 255, 255, 0.6);
+  }
+
+  .welcome-benefits-title {
+    @apply text-xl font-black tracking-tight;
+    color: #0f2f56;
+  }
+
+  .welcome-benefits-list {
+    @apply mt-3 list-none space-y-2 p-0;
+  }
+
+  .welcome-benefits-list li {
+    @apply flex items-start gap-2 text-sm;
+    color: #35516f;
   }
 }

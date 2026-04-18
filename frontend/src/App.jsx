@@ -7,6 +7,8 @@ import Welcome from "./components/Welcome";
 import TradingDashboard from "./components/TradingDashboard";
 
 const TRADING_PATHS = ["/", "/trading", "/portfolio", "/trade-history", "/funding"];
+/** Same dark “terminal” shell as trading — keeps Overview visually in one product. */
+const BRAND_SHELL_PATHS = [...TRADING_PATHS, "/welcome"];
 
 function AppContent() {
   const location = useLocation();
@@ -14,7 +16,7 @@ function AppContent() {
   const isTradingPage = TRADING_PATHS.includes(location.pathname);
 
   useEffect(() => {
-    if (TRADING_PATHS.includes(location.pathname)) {
+    if (BRAND_SHELL_PATHS.includes(location.pathname)) {
       document.body.classList.add("trading-terminal-mode");
     } else {
       document.body.classList.remove("trading-terminal-mode");

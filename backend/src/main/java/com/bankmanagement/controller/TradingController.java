@@ -90,4 +90,9 @@ public class TradingController {
     public ResponseEntity<?> fraudAlerts() {
         return ResponseEntity.ok(tradingService.getRecentFraudAlerts());
     }
+
+    @GetMapping("/tape")
+    public ResponseEntity<?> timeAndSales() {
+        return ResponseEntity.ok(tradingService.getTimeAndSales());
+    }
 }
