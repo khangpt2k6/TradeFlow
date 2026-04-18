@@ -30,12 +30,16 @@ public class MarketDataService {
 
     private final AssetRepository assetRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TradingService tradingService;
     private final Random random = new Random();
     private final Map<String, Deque<Map<String, Object>>> priceHistory = new ConcurrentHashMap<>();
 
-    public MarketDataService(AssetRepository assetRepository, SimpMessagingTemplate messagingTemplate) {
+    public MarketDataService(AssetRepository assetRepository,
+                             SimpMessagingTemplate messagingTemplate,
+                             TradingService tradingService) {
         this.assetRepository = assetRepository;
         this.messagingTemplate = messagingTemplate;
+        this.tradingService = tradingService;
     }
 
     @PostConstruct
@@ -65,6 +69,10 @@ public class MarketDataService {
             addHistoryPoint(updated.getSymbol(), updated.getCurrentPrice());
         }
         assetRepository.saveAll(assets);
+
+        for (Asset updated : assets) {
+            tradingService.onMarketPrice(updated.getSymbol(), updated.getCurrentPrice());
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("timestamp", Instant.now().toEpochMilli());

@@ -30,7 +30,14 @@ const TradingDashboard = () => {
   const [tape, setTape] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [streamStatus, setStreamStatus] = useState("connecting");
-  const [orderForm, setOrderForm] = useState({ symbol: "AAPL", side: "BUY", quantity: 1 });
+  const [orderForm, setOrderForm] = useState({
+    symbol: "AAPL",
+    side: "BUY",
+    quantity: 1,
+    orderType: "MARKET",
+    limitPrice: "",
+  });
+  const [workingOrders, setWorkingOrders] = useState([]);
   const [engineMetrics, setEngineMetrics] = useState({ processedOrders: 0, rejectedOrders: 0, retriesUsed: 0 });
   const [orderBook, setOrderBook] = useState({ bids: [], asks: [], midPrice: 0, symbol: "" });
   const [fraudAlerts, setFraudAlerts] = useState([]);
@@ -45,6 +52,7 @@ const TradingDashboard = () => {
     fetchMetrics();
     fetchTape();
     fetchRecentOrders();
+    fetchWorkingOrders();
   }, []);
 
   useEffect(() => {
@@ -106,6 +114,7 @@ const TradingDashboard = () => {
       fetchFraudAlerts();
       fetchTape();
       fetchRecentOrders();
+      fetchWorkingOrders();
       fetchPortfolio();
       if (selectedSymbol) {
         fetchOrderBook(selectedSymbol);
@@ -199,18 +208,45 @@ const TradingDashboard = () => {
     }
   };
 
+  const fetchWorkingOrders = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/trading/working-orders`, authHeaders());
+      setWorkingOrders(response.data || []);
+    } catch {
+      setWorkingOrders([]);
+    }
+  };
+
   const placeOrder = async (event) => {
     event.preventDefault();
     setMessage("");
     try {
-      const response = await axios.post(`${API_BASE_URL}/trading/orders`, orderForm, authHeaders());
+      const payload = {
+        symbol: orderForm.symbol,
+        side: orderForm.side,
+        quantity: orderForm.quantity,
+        orderType: orderForm.orderType || "MARKET",
+      };
+      if (orderForm.orderType === "LIMIT") {
+        payload.limitPrice = Number(orderForm.limitPrice);
+      }
+      const response = await axios.post(`${API_BASE_URL}/trading/orders`, payload, authHeaders());
       const execution = response.data.execution;
-      setMessage(`${execution.side} ${execution.quantity} ${execution.symbol} executed @ ${execution.price}`);
+      if (execution.status === "RESTING") {
+        setMessage(
+          `${execution.side} limit ${execution.quantity} ${execution.symbol} @ ${Number(execution.limitPrice).toFixed(4)} — resting (#${execution.restingOrderId})`,
+        );
+      } else {
+        setMessage(
+          `${execution.side} ${execution.quantity} ${execution.symbol} ${execution.status === "COMPLETED" ? "filled" : execution.status} @ ${Number(execution.price).toFixed(4)}`,
+        );
+      }
       await Promise.all([fetchPortfolio(), fetchMetrics()]);
       fetchOrderBook(orderForm.symbol);
       fetchFraudAlerts();
       fetchTape();
       fetchRecentOrders();
+      fetchWorkingOrders();
     } catch (error) {
       setMessage(error?.response?.data?.message || "Order failed");
     }
@@ -328,6 +364,9 @@ const TradingDashboard = () => {
           </span>
           <span className="trading-endpoint-pill" role="listitem">
             Tape <kbd>/api/trading/tape</kbd>
+          </span>
+          <span className="trading-endpoint-pill" role="listitem">
+            Working <kbd>/api/trading/working-orders</kbd>
           </span>
         </div>
 
@@ -480,7 +519,9 @@ const TradingDashboard = () => {
           <section className="panel trading-panel-order">
             <h3>Order ticket</h3>
             <p className="muted" style={{ fontSize: "0.72rem", margin: "0 0 0.75rem" }}>
-              Execution: <strong>market</strong> at last streamed price (simulated latency &amp; retries).
+              <strong>Market</strong> fills at the streamed last price (with simulated matching latency).{" "}
+              <strong>Limit</strong> rests on the book and fills when the tick crosses your price (buys when the market
+              trades down through your limit; sells when it trades up).
             </p>
             <form className="order-form order-form--rail" onSubmit={placeOrder}>
               <label>
@@ -497,6 +538,18 @@ const TradingDashboard = () => {
                 </select>
               </label>
               <label>
+                Order type
+                <select
+                  value={orderForm.orderType}
+                  onChange={(e) =>
+                    setOrderForm((prev) => ({ ...prev, orderType: e.target.value, limitPrice: prev.limitPrice }))
+                  }
+                >
+                  <option value="MARKET">MARKET</option>
+                  <option value="LIMIT">LIMIT</option>
+                </select>
+              </label>
+              <label>
                 Side
                 <select
                   value={orderForm.side}
@@ -506,6 +559,19 @@ const TradingDashboard = () => {
                   <option value="SELL">SELL</option>
                 </select>
               </label>
+              {orderForm.orderType === "LIMIT" && (
+                <label>
+                  Limit price
+                  <input
+                    type="number"
+                    min="0.0001"
+                    step="0.0001"
+                    required
+                    value={orderForm.limitPrice}
+                    onChange={(e) => setOrderForm((prev) => ({ ...prev, limitPrice: e.target.value }))}
+                  />
+                </label>
+              )}
               <label>
                 Quantity
                 <input
@@ -516,8 +582,27 @@ const TradingDashboard = () => {
                   onChange={(e) => setOrderForm((prev) => ({ ...prev, quantity: Number(e.target.value) }))}
                 />
               </label>
-              <button type="submit">Execute Order</button>
+              <button type="submit">{orderForm.orderType === "LIMIT" ? "Submit limit" : "Execute market"}</button>
             </form>
+
+            <section className="trading-working-orders" aria-label="Working orders">
+              <h4 className="trading-working-orders__title">Working limits</h4>
+              {workingOrders.length === 0 ? (
+                <p className="muted" style={{ fontSize: "0.75rem", margin: 0 }}>
+                  No resting limit orders.
+                </p>
+              ) : (
+                <ul className="trading-working-orders__list">
+                  {workingOrders.map((w) => (
+                    <li key={w.restingOrderId}>
+                      <span className={w.side === "BUY" ? "tape-side-buy" : "tape-side-sell"}>{w.side}</span>{" "}
+                      <span>{w.quantity}</span> {w.symbol} @ {Number(w.limitPrice).toFixed(4)}{" "}
+                      <span className="muted">#{w.restingOrderId}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
             <div className="metrics-grid metrics-grid--rail">
               <div>
@@ -531,6 +616,10 @@ const TradingDashboard = () => {
               <div>
                 <span>Retries</span>
                 <strong>{engineMetrics.retriesUsed || 0}</strong>
+              </div>
+              <div>
+                <span>Resting</span>
+                <strong>{engineMetrics.restingOrders ?? 0}</strong>
               </div>
             </div>
             {message && <p className="status-message">{message}</p>}

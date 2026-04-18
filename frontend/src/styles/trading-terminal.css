@@ -649,6 +649,38 @@ body.trading-terminal-mode .sim-badge {
   font-size: 1.25rem;
 }
 
+.metrics-grid--rail {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.trading-working-orders {
+  margin: 1rem 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(51, 65, 85, 0.55);
+}
+
+.trading-working-orders__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.trading-working-orders__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.trading-working-orders__list li {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.6);
+}
+
 .orderbook-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

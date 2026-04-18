@@ -38,6 +38,12 @@ public class TradingController {
             String symbol = String.valueOf(payload.getOrDefault("symbol", "")).trim();
             String side = String.valueOf(payload.getOrDefault("side", "")).trim();
             BigDecimal quantity = new BigDecimal(String.valueOf(payload.getOrDefault("quantity", "0")));
+            String orderType = String.valueOf(payload.getOrDefault("orderType", "MARKET")).trim();
+            BigDecimal limitPrice = null;
+            Object lp = payload.get("limitPrice");
+            if (lp != null && !"".equals(String.valueOf(lp).trim())) {
+                limitPrice = new BigDecimal(String.valueOf(lp).trim());
+            }
 
             if (symbol.isEmpty() || side.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -46,7 +52,7 @@ public class TradingController {
                 ));
             }
 
-            Map<String, Object> execution = tradingService.placeOrder(symbol, side, quantity);
+            Map<String, Object> execution = tradingService.placeOrder(symbol, side, quantity, orderType, limitPrice);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("execution", execution);
@@ -94,5 +100,10 @@ public class TradingController {
     @GetMapping("/tape")
     public ResponseEntity<?> timeAndSales() {
         return ResponseEntity.ok(tradingService.getTimeAndSales());
+    }
+
+    @GetMapping("/working-orders")
+    public ResponseEntity<?> workingOrders() {
+        return ResponseEntity.ok(tradingService.getWorkingOrders());
     }
 }

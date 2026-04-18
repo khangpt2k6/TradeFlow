@@ -43,12 +43,24 @@ public class TradingService {
     private final AtomicLong rejectedOrders = new AtomicLong(0);
     private final AtomicLong retriesUsed = new AtomicLong(0);
     private final ArrayDeque<Map<String, Object>> timeAndSales = new ArrayDeque<>();
+    private final AtomicLong restingOrderIds = new AtomicLong(1);
+
+    private final Object restingBookLock = new Object();
+    private final List<RestingOrder> restingOrders = new ArrayList<>();
+    /** Simulated user: quantity tied up in open sell limits (cannot double-spend the same shares). */
+    private final Map<Long, BigDecimal> restingSellQtyByAssetId = new HashMap<>();
 
     public TradingService(AssetRepository assetRepository) {
         this.assetRepository = assetRepository;
     }
 
-    public Map<String, Object> placeOrder(String symbol, String side, BigDecimal quantity) {
+    /**
+     * Places a market or limit order for the anonymous simulation user.
+     *
+     * @param orderType "MARKET" (default) or "LIMIT"
+     * @param limitPrice required when orderType is LIMIT
+     */
+    public Map<String, Object> placeOrder(String symbol, String side, BigDecimal quantity, String orderType, BigDecimal limitPrice) {
         Long userId = SIMULATION_USER_ID;
         validateOrderRate(userId);
         validateQuantity(quantity);
@@ -56,6 +68,18 @@ public class TradingService {
         Asset asset = assetRepository.findBySymbol(symbol.toUpperCase())
             .orElseThrow(() -> new IllegalArgumentException("Unknown symbol: " + symbol));
         Trade.TradeType tradeType = Trade.TradeType.valueOf(side.toUpperCase());
+        boolean isLimit = orderType != null && "LIMIT".equalsIgnoreCase(orderType.trim());
+
+        if (tradeType == Trade.TradeType.SELL) {
+            validateSellAgainstPosition(userId, asset.getAssetId(), quantity);
+        }
+
+        if (isLimit) {
+            if (limitPrice == null || limitPrice.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Limit orders require a positive limitPrice.");
+            }
+            return placeLimitOrder(userId, asset, tradeType, quantity, limitPrice);
+        }
 
         BigDecimal executionPrice = asset.getCurrentPrice();
         BigDecimal totalAmount = executionPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
@@ -67,20 +91,271 @@ public class TradingService {
             throw new IllegalArgumentException("Order blocked by risk engine: notional exceeds max allowed.");
         }
 
+        if (tradeType == Trade.TradeType.BUY && !hasCashForBuy(userId, totalAmount.add(commission))) {
+            throw new IllegalArgumentException("Insufficient cash for this buy order.");
+        }
+
         Trade savedTrade = executeWithRetry(userId, asset, tradeType, quantity, executionPrice, totalAmount, commission);
         processedOrders.incrementAndGet();
 
+        return toExecutionMap(asset.getSymbol(), savedTrade, null);
+    }
+
+    /** Called after each market tick so resting limits can fill against streamed prices. */
+    public void onMarketPrice(String symbol, BigDecimal lastPrice) {
+        if (symbol == null || lastPrice == null) {
+            return;
+        }
+        String sym = symbol.toUpperCase();
+        List<RestingOrder> snapshot;
+        synchronized (restingBookLock) {
+            snapshot = new ArrayList<>();
+            for (RestingOrder o : restingOrders) {
+                if (o.symbol.equals(sym)) {
+                    snapshot.add(o);
+                }
+            }
+        }
+
+        for (RestingOrder o : snapshot) {
+            boolean buyHit = o.side == Trade.TradeType.BUY && lastPrice.compareTo(o.limitPrice) <= 0;
+            boolean sellHit = o.side == Trade.TradeType.SELL && lastPrice.compareTo(o.limitPrice) >= 0;
+            if (!buyHit && !sellHit) {
+                continue;
+            }
+
+            Asset asset = assetRepository.findById(o.assetId).orElse(null);
+            if (asset == null) {
+                continue;
+            }
+            BigDecimal fillPrice = lastPrice.setScale(4, RoundingMode.HALF_UP);
+            BigDecimal totalAmount = fillPrice.multiply(o.quantity).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal commission = totalAmount.multiply(BigDecimal.valueOf(0.0015)).setScale(2, RoundingMode.HALF_UP);
+            if (totalAmount.compareTo(MAX_ORDER_NOTIONAL) > 0) {
+                continue;
+            }
+            if (o.side == Trade.TradeType.BUY && !hasCashForBuy(o.userId, totalAmount.add(commission))) {
+                continue;
+            }
+            if (o.side == Trade.TradeType.SELL) {
+                try {
+                    validateSellAgainstPosition(o.userId, o.assetId, o.quantity);
+                } catch (IllegalArgumentException ex) {
+                    continue;
+                }
+            }
+
+            boolean removed;
+            synchronized (restingBookLock) {
+                removed = restingOrders.remove(o);
+                if (removed && o.side == Trade.TradeType.SELL) {
+                    releaseRestingSell(o.assetId, o.quantity);
+                }
+            }
+            if (!removed) {
+                continue;
+            }
+
+            Trade t = executeDirectFill(o.userId, asset, o.side, o.quantity, fillPrice, totalAmount, commission,
+                "Limit filled on streamed price");
+            if (t != null) {
+                processedOrders.incrementAndGet();
+            }
+        }
+    }
+
+    public List<Map<String, Object>> getWorkingOrders() {
+        synchronized (restingBookLock) {
+            List<Map<String, Object>> out = new ArrayList<>();
+            for (RestingOrder o : restingOrders) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("restingOrderId", o.restingId);
+                row.put("symbol", o.symbol);
+                row.put("side", o.side.name());
+                row.put("quantity", o.quantity);
+                row.put("limitPrice", o.limitPrice);
+                row.put("placedAt", o.placedAt != null
+                    ? o.placedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    : null);
+                out.add(row);
+            }
+            return out;
+        }
+    }
+
+    private Map<String, Object> placeLimitOrder(Long userId, Asset asset, Trade.TradeType tradeType,
+                                                 BigDecimal quantity, BigDecimal limitPrice) {
+        BigDecimal mid = asset.getCurrentPrice();
+        BigDecimal notionalCap = limitPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
+        if (notionalCap.compareTo(MAX_ORDER_NOTIONAL) > 0) {
+            rejectedOrders.incrementAndGet();
+            throw new IllegalArgumentException("Order blocked by risk engine: limit notional exceeds max allowed.");
+        }
+
+        boolean marketableBuy = tradeType == Trade.TradeType.BUY && mid.compareTo(limitPrice) <= 0;
+        boolean marketableSell = tradeType == Trade.TradeType.SELL && mid.compareTo(limitPrice) >= 0;
+
+        if (marketableBuy || marketableSell) {
+            BigDecimal executionPrice = mid.setScale(4, RoundingMode.HALF_UP);
+            BigDecimal totalAmount = executionPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal commission = totalAmount.multiply(BigDecimal.valueOf(0.0015)).setScale(2, RoundingMode.HALF_UP);
+            if (tradeType == Trade.TradeType.BUY && !hasCashForBuy(userId, totalAmount.add(commission))) {
+                throw new IllegalArgumentException("Insufficient cash for this buy order.");
+            }
+            Trade savedTrade = executeWithRetry(userId, asset, tradeType, quantity, executionPrice, totalAmount, commission);
+            processedOrders.incrementAndGet();
+            return toExecutionMap(asset.getSymbol(), savedTrade, null);
+        }
+
+        if (tradeType == Trade.TradeType.BUY) {
+            BigDecimal worst = limitPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal worstComm = worst.multiply(BigDecimal.valueOf(0.0015)).setScale(2, RoundingMode.HALF_UP);
+            if (!hasCashForBuy(userId, worst.add(worstComm))) {
+                throw new IllegalArgumentException("Insufficient cash to rest this buy limit at the given price.");
+            }
+        }
+
+        RestingOrder resting = new RestingOrder(
+            restingOrderIds.getAndIncrement(),
+            userId,
+            asset.getAssetId(),
+            asset.getSymbol(),
+            tradeType,
+            quantity,
+            limitPrice,
+            LocalDateTime.now()
+        );
+        synchronized (restingBookLock) {
+            if (tradeType == Trade.TradeType.SELL) {
+                validateSellAgainstPositionAndResting(userId, asset.getAssetId(), quantity);
+            }
+            restingOrders.add(resting);
+            if (tradeType == Trade.TradeType.SELL) {
+                restingSellQtyByAssetId.merge(asset.getAssetId(), quantity, BigDecimal::add);
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("tradeId", null);
+        response.put("symbol", asset.getSymbol());
+        response.put("side", tradeType);
+        response.put("quantity", quantity);
+        response.put("price", null);
+        response.put("totalAmount", null);
+        response.put("commission", null);
+        response.put("status", "RESTING");
+        response.put("executedAt", null);
+        response.put("restingOrderId", resting.restingId);
+        response.put("limitPrice", limitPrice);
+        return response;
+    }
+
+    private Map<String, Object> toExecutionMap(String symbol, Trade savedTrade, Long restingId) {
         Map<String, Object> response = new HashMap<>();
         response.put("tradeId", savedTrade.getTradeId());
-        response.put("symbol", asset.getSymbol());
+        response.put("symbol", symbol);
         response.put("side", savedTrade.getTradeType());
         response.put("quantity", savedTrade.getQuantity());
         response.put("price", savedTrade.getPricePerUnit());
         response.put("totalAmount", savedTrade.getTotalAmount());
         response.put("commission", savedTrade.getCommission());
-        response.put("status", savedTrade.getStatus());
+        response.put("status", savedTrade.getStatus() != null ? savedTrade.getStatus().name() : "UNKNOWN");
         response.put("executedAt", savedTrade.getExecutedAt());
+        response.put("restingOrderId", restingId);
+        response.put("limitPrice", null);
         return response;
+    }
+
+    private boolean hasCashForBuy(Long userId, BigDecimal required) {
+        return computeSessionCash(userId).compareTo(required) >= 0;
+    }
+
+    private void validateSellAgainstPosition(Long userId, Long assetId, BigDecimal quantity) {
+        BigDecimal pos = getNetPosition(userId, assetId);
+        if (pos.compareTo(quantity) < 0) {
+            throw new IllegalArgumentException(
+                "Insufficient position to sell (have " + pos.stripTrailingZeros().toPlainString() + ").");
+        }
+    }
+
+    private void validateSellAgainstPositionAndResting(Long userId, Long assetId, BigDecimal quantity) {
+        BigDecimal pos = getNetPosition(userId, assetId);
+        BigDecimal tied = getRestingSellExposure(assetId);
+        BigDecimal available = pos.subtract(tied);
+        if (available.compareTo(quantity) < 0) {
+            throw new IllegalArgumentException(
+                "Insufficient shares available for this sell limit (open sell limits tie up inventory).");
+        }
+    }
+
+    private BigDecimal getNetPosition(Long userId, Long assetId) {
+        synchronized (simulatedTrades) {
+            BigDecimal net = BigDecimal.ZERO;
+            for (Trade t : simulatedTrades) {
+                if (!userId.equals(t.getUserId()) || t.getStatus() != Trade.TradeStatus.COMPLETED) {
+                    continue;
+                }
+                if (!assetId.equals(t.getAssetId())) {
+                    continue;
+                }
+                BigDecimal delta = t.getTradeType() == Trade.TradeType.BUY
+                    ? t.getQuantity()
+                    : t.getQuantity().negate();
+                net = net.add(delta);
+            }
+            return net.setScale(8, RoundingMode.HALF_UP);
+        }
+    }
+
+    private BigDecimal getRestingSellExposure(Long assetId) {
+        synchronized (restingBookLock) {
+            return restingSellQtyByAssetId.getOrDefault(assetId, BigDecimal.ZERO);
+        }
+    }
+
+    private void releaseRestingSell(Long assetId, BigDecimal qty) {
+        restingSellQtyByAssetId.compute(assetId, (k, v) -> {
+            if (v == null) {
+                return null;
+            }
+            BigDecimal next = v.subtract(qty);
+            return next.compareTo(BigDecimal.ZERO) <= 0 ? null : next;
+        });
+    }
+
+    private Trade executeDirectFill(Long userId,
+                                    Asset asset,
+                                    Trade.TradeType tradeType,
+                                    BigDecimal quantity,
+                                    BigDecimal executionPrice,
+                                    BigDecimal totalAmount,
+                                    BigDecimal commission,
+                                    String notes) {
+        Trade trade = new Trade();
+        trade.setUserId(userId);
+        trade.setAssetId(asset.getAssetId());
+        trade.setTradeType(tradeType);
+        trade.setQuantity(quantity);
+        trade.setPricePerUnit(executionPrice);
+        trade.setTotalAmount(totalAmount);
+        trade.setCommission(commission);
+        trade.setExecutedAt(LocalDateTime.now());
+        trade.setStatus(Trade.TradeStatus.COMPLETED);
+        trade.setNotes(notes);
+        persistSimulatedTrade(trade, asset.getSymbol());
+        return trade;
+    }
+
+    private record RestingOrder(
+        long restingId,
+        long userId,
+        long assetId,
+        String symbol,
+        Trade.TradeType side,
+        BigDecimal quantity,
+        BigDecimal limitPrice,
+        LocalDateTime placedAt
+    ) {
     }
 
     public List<Trade> getRecentOrders() {
@@ -157,6 +432,9 @@ public class TradingService {
         metrics.put("retriesUsed", retriesUsed.get());
         metrics.put("ordersLast10Seconds", recentOrders);
         metrics.put("timestamp", Instant.now().toEpochMilli());
+        synchronized (restingBookLock) {
+            metrics.put("restingOrders", restingOrders.size());
+        }
         return metrics;
     }
 
