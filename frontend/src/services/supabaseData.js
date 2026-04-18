@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabaseClient";
 
 export const upsertUserProfile = async ({ userId, email, firstName, lastName, phone, address, dateOfBirth }) => {
-  if (!userId) return;
+  if (!userId || !supabase) return;
 
   const payload = {
     id: userId,
@@ -21,7 +21,7 @@ export const upsertUserProfile = async ({ userId, email, firstName, lastName, ph
 };
 
 export const logTradeExecution = async ({ userId, symbol, side, quantity, price }) => {
-  if (!userId) return;
+  if (!userId || !supabase) return;
 
   const { error } = await supabase.from("trade_orders").insert({
     user_id: userId,

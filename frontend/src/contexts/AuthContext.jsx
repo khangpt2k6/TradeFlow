@@ -8,6 +8,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabase) {
+      setSession(null);
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     const bootstrap = async () => {
@@ -41,7 +47,7 @@ export const AuthProvider = ({ children }) => {
       user: session?.user ?? null,
       loading,
       isAuthenticated: Boolean(session),
-      signOut: () => supabase.auth.signOut(),
+      signOut: () => (supabase ? supabase.auth.signOut() : Promise.resolve()),
     }),
     [session, loading]
   );

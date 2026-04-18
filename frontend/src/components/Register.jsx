@@ -96,6 +96,13 @@ const Register = () => {
       }
     }
 
+    if (!supabase) {
+      toast.error(
+        "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env (see .env.example)."
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -143,6 +150,12 @@ const Register = () => {
   };
 
   const handleOAuthLogin = async (provider) => {
+    if (!supabase) {
+      toast.error(
+        "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env (see .env.example)."
+      );
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
