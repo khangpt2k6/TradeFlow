@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/theme.css";
+@import "./styles/trading-terminal.css";
 
 @keyframes liquidDrift {
   0% { transform: translate3d(-8%, -4%, 0) scale(1); }

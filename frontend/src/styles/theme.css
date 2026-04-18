@@ -10,6 +10,9 @@
   --app-surface: transparent;
   --accent: #2d8dff;
   --accent-soft: #7fd7ff;
+  --chart-line: #2cc2ff;
+  --chart-axis: #89a8c4;
+  --chart-grid: rgba(148, 163, 184, 0.15);
 }
 
 /* Keep app-level colors controlled by theme tokens. */

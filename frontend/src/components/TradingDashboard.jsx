@@ -5,6 +5,14 @@ import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { API_BASE_URL } from "../config/api";
 
+const API_ORIGIN_LABEL = (() => {
+  try {
+    return new URL(API_BASE_URL).host;
+  } catch {
+    return API_BASE_URL;
+  }
+})();
+
 const TradingDashboard = () => {
   const [assets, setAssets] = useState([]);
   const [selectedSymbol, setSelectedSymbol] = useState("AAPL");
@@ -169,10 +177,15 @@ const TradingDashboard = () => {
 
     const width = container.clientWidth || 800;
     const height = 280;
-    const margin = { top: 16, right: 18, bottom: 24, left: 44 };
+    const margin = { top: 16, right: 18, bottom: 24, left: 52 };
 
     d3.select(container).selectAll("*").remove();
     if (!data || data.length === 0) return;
+
+    const bodyStyle = getComputedStyle(document.body);
+    const lineColor = bodyStyle.getPropertyValue("--chart-line").trim() || "#2cc2ff";
+    const axisColor = bodyStyle.getPropertyValue("--chart-axis").trim() || "#89a8c4";
+    const gridColor = bodyStyle.getPropertyValue("--chart-grid").trim() || "rgba(148, 163, 184, 0.15)";
 
     const svg = d3
       .select(container)
@@ -192,6 +205,18 @@ const TradingDashboard = () => {
       .nice()
       .range([height - margin.bottom, margin.top]);
 
+    const yTicks = y.ticks(5);
+    yTicks.forEach((t) => {
+      svg
+        .append("line")
+        .attr("x1", margin.left)
+        .attr("x2", width - margin.right)
+        .attr("y1", y(t))
+        .attr("y2", y(t))
+        .attr("stroke", gridColor)
+        .attr("stroke-dasharray", "4 6");
+    });
+
     const line = d3
       .line()
       .x((d) => x(new Date(d.timestamp)))
@@ -202,28 +227,45 @@ const TradingDashboard = () => {
       .append("path")
       .datum(data)
       .attr("fill", "none")
-      .attr("stroke", "#2cc2ff")
+      .attr("stroke", lineColor)
       .attr("stroke-width", 2.4)
       .attr("d", line);
 
-    svg
+    const xAxis = svg
       .append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat("%H:%M:%S")))
-      .attr("color", "#89a8c4");
+      .call(d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat("%H:%M:%S")));
+    xAxis.selectAll("text").attr("fill", axisColor);
+    xAxis.selectAll("path, line").attr("stroke", axisColor);
 
-    svg
-      .append("g")
-      .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(5))
-      .attr("color", "#89a8c4");
+    const yAxis = svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5));
+    yAxis.selectAll("text").attr("fill", axisColor);
+    yAxis.selectAll("path, line").attr("stroke", axisColor);
   };
 
   return (
     <div className="trading-page">
       <div className="trading-header">
-        <h1>TradeFlow Live Platform</h1>
-        <p>Concurrent matching simulation + streaming market feed</p>
+        <div className="trading-title-row">
+          <div className="trading-title-block">
+            <h1>
+              TradeFlow Live Platform
+              <span className="sim-badge">LIVE SIM</span>
+            </h1>
+            <p>
+              Spring Boot matching engine · REST <code className="trading-code-inline">/api/trading</code> · STOMP
+              stream <code className="trading-code-inline">/ws-market</code>
+            </p>
+          </div>
+          <div className="trading-meta-col">
+            <div className="data-source-pill" title={API_BASE_URL}>
+              API {API_ORIGIN_LABEL}
+            </div>
+            {orderBook.midPrice > 0 && (
+              <div className="mid-pill">Mid {Number(orderBook.midPrice).toFixed(4)}</div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="trading-grid">
@@ -312,18 +354,18 @@ const TradingDashboard = () => {
           <div className="orderbook-grid">
             <div>
               <h4>Bids</h4>
-              {(orderBook.bids || []).map((row) => (
-                <div key={`bid-${row.price}`} className="book-row bid">
-                  <span>{Number(row.price).toFixed(2)}</span>
+              {(orderBook.bids || []).map((row, i) => (
+                <div key={`bid-${i}-${row.price}`} className="book-row bid">
+                  <span>{Number(row.price).toFixed(4)}</span>
                   <span>{Number(row.quantity).toFixed(2)}</span>
                 </div>
               ))}
             </div>
             <div>
               <h4>Asks</h4>
-              {(orderBook.asks || []).map((row) => (
-                <div key={`ask-${row.price}`} className="book-row ask">
-                  <span>{Number(row.price).toFixed(2)}</span>
+              {(orderBook.asks || []).map((row, i) => (
+                <div key={`ask-${i}-${row.price}`} className="book-row ask">
+                  <span>{Number(row.price).toFixed(4)}</span>
                   <span>{Number(row.quantity).toFixed(2)}</span>
                 </div>
               ))}
