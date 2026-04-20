@@ -2,7 +2,7 @@
 
 A **Spring Boot** + **React** paper-trading platform built to look and behave like a real trading terminal. Streams live synthetic ticks across **28 symbols** in parallel (mega-cap tech, finance, energy, consumer, crypto, commodities), runs market and limit orders through an in-memory matching engine with retry + anti-abuse controls, and renders a dense Bloomberg-style workspace: watchlist, D3 chart, order book with depth, ticket, positions, working limits, time & sales, and a market-breadth heat strip.
 
-<img width="1890" height="1006" alt="TradeFlow trading terminal" src="https://github.com/user-attachments/assets/bcb9662b-cc81-4e10-bc94-35cc1d191b38" />
+<img width="1890" height="995" alt="image" src="https://github.com/user-attachments/assets/4d53ed15-3aae-4e6d-9135-eb44ad6fd237" />
 
 ## Tech Stack
 
