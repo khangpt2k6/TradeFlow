@@ -5,165 +5,164 @@ import {
   ShieldLock,
   LightningCharge,
   ClockHistory,
-  CheckCircle,
+  ArrowRight,
 } from "react-bootstrap-icons";
 
+const slides = [
+  {
+    title: "Your wealth,",
+    highlight: "perfectly managed",
+    subtitle:
+      "A focused trading terminal with concurrent matching, streaming ticks, and honest execution — no login wall.",
+  },
+  {
+    title: "Smart trading,",
+    highlight: "simplified",
+    subtitle:
+      "Global markets, intuitive tooling. Real-time data and instant paper execution in one workspace.",
+  },
+  {
+    title: "Complete control,",
+    highlight: "always",
+    subtitle:
+      "Monitor positions, risk, and P&L from a single dashboard designed for dense information.",
+  },
+];
+
+const features = [
+  {
+    icon: ShieldLock,
+    title: "Simulation-grade controls",
+    desc: "Concurrent matching, retry pipelines, and stress alerts.",
+  },
+  {
+    icon: LightningCharge,
+    title: "Faster workflows",
+    desc: "Automated rebalancing and sub-second execution paths.",
+  },
+  {
+    icon: ClockHistory,
+    title: "24/7 visibility",
+    desc: "Transparent reporting on risk, performance, positions.",
+  },
+];
+
 const Welcome = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const features = [
-    {
-      icon: ShieldLock,
-      title: "Simulation-grade controls",
-      description:
-        "Concurrent matching, retry pipelines, and fraud-style alerts exercise the engine under stress without a login wall.",
-    },
-    {
-      icon: LightningCharge,
-      title: "Faster workflows",
-      description:
-        "Automate portfolio rebalancing and execution so your team can react to markets in real-time.",
-    },
-    {
-      icon: ClockHistory,
-      title: "24/7 visibility",
-      description:
-        "Transparent reporting with instant alerts ensures you never lose sight of risk, performance, or positions.",
-    },
-  ];
-
-  const benefits = [
-    "Real-time portfolio tracking",
-    "In-memory simulated execution",
-    "Streaming market ticks",
-    "Live order book visualization",
-  ];
-
-  const slides = [
-    {
-      title: "Your wealth,",
-      titleHighlight: "perfectly managed",
-      subtitle:
-        "Experience a focused trading platform with confidence, security, and complete transparency.",
-    },
-    {
-      title: "Smart trading,",
-      titleHighlight: "simplified",
-      subtitle:
-        "Access global markets with intuitive tools. Execute trades seamlessly with real-time data and instant execution.",
-    },
-    {
-      title: "Complete control,",
-      titleHighlight: "always",
-      subtitle:
-        "Monitor your positions from one dashboard and get insights that help you make better decisions.",
-    },
-  ];
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-  const goToSlide = (index) => {
-    setCurrentSlide(index);
-  };
+  const [slide, setSlide] = useState(0);
+  const current = slides[slide];
 
   return (
-    <div className="welcome-page">
-      <div className="welcome-container">
-        {/* Hero Section */}
-        <section className="welcome-hero">
-          <span className="welcome-badge">Secure Trading Platform</span>
+    <div className="flex min-h-[calc(100vh-72px)] w-full items-stretch bg-tf-bg px-4 py-4 text-tf-text md:px-6 md:py-6">
+      <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-4 lg:grid-cols-[1.05fr_1fr] lg:gap-6">
+        {/* LEFT — video panel */}
+        <section className="relative flex min-h-[280px] overflow-hidden rounded-xl border border-tf-border bg-tf-panel shadow-neu">
+          <video
+            className="h-full w-full object-cover opacity-80"
+            src={tradingVideo}
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/80 via-black/30 to-transparent" />
 
-          <div className="welcome-video-frame">
-            <video
-              className="welcome-video"
-              src={tradingVideo}
-              autoPlay
-              loop
-              muted
-              playsInline
-            />
-            <div className="welcome-video-overlay">
-              <h2>See TradeFlow in Action</h2>
-              <p>Live market-focused visuals powered by your `trading.mp4` asset.</p>
+          <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300 backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+            Secure trading platform
+          </span>
+
+          <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-tf-dim">
+                Live feed
+              </div>
+              <div className="mt-1 text-base font-semibold md:text-lg">
+                TradeFlow in action
+              </div>
+            </div>
+            <div className="hidden rounded-md border border-tf-border bg-tf-panel-2/80 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-tf-dim backdrop-blur md:block">
+              trading.mp4 · simulator
             </div>
           </div>
+        </section>
 
-          <div className="welcome-slider">
-            <div className="welcome-slide-wrapper">
-              {slides.map((slide, index) => (
-                <div
-                  key={index}
-                  className={`welcome-slide ${index === currentSlide ? "active" : ""}`}
-                >
-                  <h1 className="welcome-title">
-                    {slide.title}
-                    <span className="welcome-title-highlight"> {slide.titleHighlight}</span>
-                  </h1>
-                  <p className="welcome-subtitle">{slide.subtitle}</p>
-                </div>
-              ))}
+        {/* RIGHT — hero + CTAs + features */}
+        <section className="flex flex-col justify-between gap-4">
+          <div className="rounded-xl border border-tf-border bg-tf-panel p-5 shadow-neu md:p-6">
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-tf-dim">
+              <span className="rounded border border-tf-border bg-tf-panel-2 px-2 py-0.5 text-tf-accent">
+                v1.0
+              </span>
+              <span>Paper engine · Spring Boot core</span>
             </div>
 
-            <div className="welcome-cta">
-              <Link to="/trading" className="welcome-btn welcome-btn-primary">
+            <h1 className="mt-3 text-3xl font-black leading-[1.05] tracking-tight md:text-4xl lg:text-[2.6rem]">
+              {current.title}
+              <br />
+              <span className="bg-gradient-to-r from-emerald-400 via-sky-300 to-sky-500 bg-clip-text text-transparent">
+                {current.highlight}
+              </span>
+            </h1>
+            <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-tf-dim md:text-[15px]">
+              {current.subtitle}
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <Link
+                to="/trading"
+                className="inline-flex items-center gap-2 rounded-md border border-emerald-600 bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-2.5 font-mono text-[12px] font-bold uppercase tracking-wider text-emerald-950 shadow-neu-buy transition hover:brightness-110"
+              >
                 Open trading sim
+                <ArrowRight size={14} />
               </Link>
-              <Link to="/trading" className="welcome-btn welcome-btn-secondary">
+              <Link
+                to="/trading"
+                className="inline-flex items-center gap-2 rounded-md border border-tf-border bg-gradient-to-b from-[#0f1623] to-[#0a0f18] px-4 py-2.5 font-mono text-[12px] font-bold uppercase tracking-wider text-tf-text shadow-neu-raised transition hover:border-tf-accent hover:text-tf-accent"
+              >
                 Live dashboard
               </Link>
             </div>
 
-            {/* Pagination Indicators */}
-            <div className="welcome-indicators">
-              {slides.map((_, index) => (
-                <button
-                  key={index}
-                  className={`welcome-indicator ${index === currentSlide ? "active" : ""}`}
-                  onClick={() => goToSlide(index)}
-                  aria-label={`Go to slide ${index + 1}`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-              <span className="welcome-trust">Trusted by thousands</span>
+            <div className="mt-5 flex items-center gap-3">
+              <div className="flex gap-1.5">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSlide(i)}
+                    aria-label={`Go to slide ${i + 1}`}
+                    className={`h-7 w-7 rounded-md border font-mono text-[11px] font-bold transition ${
+                      i === slide
+                        ? "border-tf-accent bg-tf-accent/10 text-tf-accent shadow-neu-inset"
+                        : "border-tf-border bg-tf-panel-2 text-tf-mute hover:text-tf-text"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-tf-mute">
+                Trusted by thousands
+              </span>
             </div>
           </div>
 
-          {/* Features Grid */}
-          <div className="welcome-features">
-            {features.map((feature, index) => (
-              <div className="welcome-feature" key={index}>
-                <div className="welcome-feature-icon">
-                  <feature.icon size={24} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {features.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-xl border border-tf-border bg-tf-panel p-4 shadow-neu-raised transition hover:border-tf-accent/50"
+              >
+                <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-tf-border bg-gradient-to-br from-emerald-500/20 to-sky-500/20 text-tf-accent">
+                  <f.icon size={16} />
                 </div>
-                <h3>{feature.title}</h3>
-                <p>{feature.description}</p>
+                <div className="text-[13px] font-semibold text-tf-text">
+                  {f.title}
+                </div>
+                <div className="mt-1 text-[11.5px] leading-snug text-tf-dim">
+                  {f.desc}
+                </div>
               </div>
             ))}
-          </div>
-
-          {/* Benefits Section */}
-          <div className="welcome-benefits">
-            <div className="welcome-benefits-content">
-              <h2 className="welcome-benefits-title">Why Choose TradeFlow?</h2>
-              <ul className="welcome-benefits-list">
-                {benefits.map((benefit, index) => (
-                  <li key={index}>
-                    <CheckCircle size={20} />
-                    <span>{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link to="/trading" className="welcome-btn welcome-btn-primary">
-                Launch simulator
-              </Link>
-            </div>
           </div>
         </section>
       </div>
@@ -172,4 +171,3 @@ const Welcome = () => {
 };
 
 export default Welcome;
-

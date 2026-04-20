@@ -32,7 +32,7 @@ const PANEL_TITLE = "text-[10.5px] font-extrabold tracking-[0.16em] uppercase te
 const PANEL_SUB = "text-[10.5px] font-mono text-tf-mute";
 const MONO_NUM = "font-mono tabular-nums";
 const LABEL_MICRO = "text-[9.5px] font-extrabold tracking-[0.14em] uppercase text-tf-mute";
-const INPUT = "w-full px-2.5 py-2 rounded-md border border-tf-border bg-tf-inset text-tf-text font-mono text-[12.5px] font-semibold tabular-nums outline-none shadow-neu-inset focus:border-tf-accent transition";
+const INPUT = "w-full px-2.5 py-2 rounded-md border border-tf-border bg-gradient-to-b from-[#070b12] to-[#0a0f18] text-tf-text font-mono text-[12.5px] font-semibold tabular-nums outline-none shadow-neu-inset focus:border-tf-accent transition";
 const TAB_BTN = "px-4 py-2.5 bg-transparent border-0 border-b-2 border-transparent text-tf-dim text-[11.5px] font-bold tracking-wider uppercase cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap hover:text-tf-text transition-colors";
 
 const statusColor = (status) => {
@@ -713,8 +713,12 @@ const TradingDashboard = () => {
 
           <div className="grid grid-cols-2 gap-1.5 border-b border-tf-border p-2.5">
             {[
-              { key: "BUY", label: "BUY", active: "bg-tf-buy text-emerald-950 border-green-600 shadow-neu-buy", inactive: "bg-tf-raised text-tf-dim border-tf-border shadow-neu-raised" },
-              { key: "SELL", label: "SELL", active: "bg-tf-sell text-red-950 border-red-600 shadow-neu-sell", inactive: "bg-tf-raised text-tf-dim border-tf-border shadow-neu-raised" },
+              { key: "BUY", label: "BUY",
+                active: "bg-gradient-to-b from-emerald-500 to-emerald-600 text-emerald-950 border-emerald-600 shadow-neu-buy",
+                inactive: "bg-gradient-to-b from-[#0f1623] to-[#0a0f18] text-tf-dim border-tf-border shadow-neu-raised" },
+              { key: "SELL", label: "SELL",
+                active: "bg-gradient-to-b from-red-500 to-red-600 text-red-950 border-red-600 shadow-neu-sell",
+                inactive: "bg-gradient-to-b from-[#0f1623] to-[#0a0f18] text-tf-dim border-tf-border shadow-neu-raised" },
             ].map((b) => (
               <button
                 key={b.key}
@@ -788,7 +792,7 @@ const TradingDashboard = () => {
                   key={q}
                   type="button"
                   onClick={() => setOrderForm((p) => ({ ...p, quantity: q }))}
-                  className="rounded border border-tf-border bg-tf-raised py-1.5 font-mono text-[11px] font-bold text-tf-dim shadow-neu-raised transition hover:text-tf-text hover:border-tf-accent active:shadow-neu-inset"
+                  className="rounded border border-tf-border bg-gradient-to-b from-[#0f1623] to-[#0a0f18] py-1.5 font-mono text-[11px] font-bold text-tf-dim shadow-neu-raised transition hover:text-tf-text hover:border-tf-accent active:shadow-neu-inset"
                 >
                   {q}
                 </button>
@@ -804,8 +808,8 @@ const TradingDashboard = () => {
               type="submit"
               className={`mt-0.5 rounded-lg border-0 py-2.5 font-mono text-[12.5px] font-extrabold tracking-wider transition active:translate-y-px ${
                 orderForm.side === "BUY"
-                  ? "bg-tf-buy text-emerald-950 shadow-neu-buy hover:brightness-110"
-                  : "bg-tf-sell text-red-950 shadow-neu-sell hover:brightness-110"
+                  ? "bg-gradient-to-b from-emerald-500 to-emerald-600 text-emerald-950 shadow-neu-buy hover:brightness-110"
+                  : "bg-gradient-to-b from-red-500 to-red-600 text-red-950 shadow-neu-sell hover:brightness-110"
               }`}
             >
               {orderForm.side} · {orderForm.orderType} · {orderForm.quantity} {orderForm.symbol}

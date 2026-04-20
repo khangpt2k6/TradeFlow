@@ -20,14 +20,7 @@ export default {
         },
       },
       fontFamily: {
-        mono: [
-          "ui-monospace",
-          "JetBrains Mono",
-          "SF Mono",
-          "Menlo",
-          "Consolas",
-          "monospace",
-        ],
+        mono: ["ui-monospace", "JetBrains Mono", "SF Mono", "Menlo", "Consolas", "monospace"],
       },
       boxShadow: {
         neu: "10px 10px 24px rgba(0,0,0,0.55), -6px -6px 18px rgba(56,189,248,0.025), inset 1px 1px 0 rgba(255,255,255,0.03), inset -1px -1px 0 rgba(0,0,0,0.35)",
@@ -39,18 +32,6 @@ export default {
           "6px 6px 14px rgba(0,0,0,0.55), 0 6px 20px rgba(34,197,94,0.28), inset 1px 1px 0 rgba(255,255,255,0.18)",
         "neu-sell":
           "6px 6px 14px rgba(0,0,0,0.55), 0 6px 20px rgba(239,68,68,0.28), inset 1px 1px 0 rgba(255,255,255,0.18)",
-      },
-      backgroundImage: {
-        "tf-panel":
-          "linear-gradient(180deg, #0e1420 0%, #080c14 100%)",
-        "tf-inset":
-          "linear-gradient(180deg, #070b12 0%, #0a0f18 100%)",
-        "tf-raised":
-          "linear-gradient(180deg, #0f1623 0%, #0a0f18 100%)",
-        "tf-buy":
-          "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)",
-        "tf-sell":
-          "linear-gradient(180deg, #ef4444 0%, #dc2626 100%)",
       },
     },
   },
