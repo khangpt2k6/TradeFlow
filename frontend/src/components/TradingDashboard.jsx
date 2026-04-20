@@ -340,13 +340,23 @@ const TradingDashboard = () => {
   const selectedChange = selectedAsset ? Number(selectedAsset.changePercent) : 0;
   const selectedUp = selectedChange >= 0;
 
-  const bookDepth = useMemo(() => {
-    const sums = [
-      ...(orderBook.bids || []).map((r) => Number(r.quantity) || 0),
-      ...(orderBook.asks || []).map((r) => Number(r.quantity) || 0),
-    ];
-    const max = sums.length ? Math.max(...sums) : 0;
-    return max > 0 ? max : 1;
+  // Cumulative depth from the spread outward — best price at cum = first level qty,
+  // each subsequent level adds its size, so bars grow as you walk away from the touch.
+  const { asksCum, bidsCum, depthMax } = useMemo(() => {
+    const asks = (orderBook.asks || []).slice(0, 10);
+    const bids = (orderBook.bids || []).slice(0, 10);
+    let aSum = 0;
+    const asksCum = asks.map((r) => {
+      aSum += Number(r.quantity) || 0;
+      return { ...r, cum: aSum };
+    });
+    let bSum = 0;
+    const bidsCum = bids.map((r) => {
+      bSum += Number(r.quantity) || 0;
+      return { ...r, cum: bSum };
+    });
+    const depthMax = Math.max(aSum, bSum, 1);
+    return { asksCum, bidsCum, depthMax };
   }, [orderBook]);
 
   const bestBid = orderBook.bids?.[0]?.price;
@@ -370,7 +380,7 @@ const TradingDashboard = () => {
     if (!container) return;
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 360;
-    const margin = { top: 12, right: 56, bottom: 22, left: 12 };
+    const margin = { top: 14, right: 64, bottom: 24, left: 12 };
 
     d3.select(container).selectAll("*").remove();
     if (!data || data.length === 0) return;
@@ -379,9 +389,9 @@ const TradingDashboard = () => {
     const lastPrice = data[data.length - 1].price;
     const up = lastPrice >= firstPrice;
     const lineColor = up ? "#22c55e" : "#ef4444";
-    const fillColor = up ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)";
     const axisColor = "#64748b";
-    const gridColor = "rgba(148,163,184,0.08)";
+    const gridColor = "rgba(148,163,184,0.13)";
+    const refColor = "rgba(148,163,184,0.45)";
 
     const svg = d3
       .select(container)
@@ -401,62 +411,96 @@ const TradingDashboard = () => {
       .nice()
       .range([height - margin.bottom, margin.top]);
 
+    // Horizontal gridlines
+    const gridGroup = svg.append("g");
     y.ticks(6).forEach((t) => {
-      svg
-        .append("line")
-        .attr("x1", margin.left)
-        .attr("x2", width - margin.right)
-        .attr("y1", y(t))
-        .attr("y2", y(t))
+      gridGroup.append("line")
+        .attr("x1", margin.left).attr("x2", width - margin.right)
+        .attr("y1", y(t)).attr("y2", y(t))
         .attr("stroke", gridColor);
     });
 
-    const gradId = `tf-grad-${up ? "up" : "down"}`;
-    const defs = svg.append("defs");
-    const grad = defs
-      .append("linearGradient")
-      .attr("id", gradId)
-      .attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
-    grad.append("stop").attr("offset", "0%").attr("stop-color", fillColor);
-    grad.append("stop").attr("offset", "100%").attr("stop-color", "rgba(0,0,0,0)");
+    // Vertical gridlines (time)
+    x.ticks(6).forEach((t) => {
+      gridGroup.append("line")
+        .attr("x1", x(t)).attr("x2", x(t))
+        .attr("y1", margin.top).attr("y2", height - margin.bottom)
+        .attr("stroke", gridColor);
+    });
 
-    const area = d3
-      .area()
+    // Open-price reference line
+    svg.append("line")
+      .attr("x1", margin.left).attr("x2", width - margin.right)
+      .attr("y1", y(firstPrice)).attr("y2", y(firstPrice))
+      .attr("stroke", refColor).attr("stroke-width", 1).attr("stroke-dasharray", "2 4");
+    svg.append("text")
+      .attr("x", margin.left + 4).attr("y", y(firstPrice) - 4)
+      .attr("font-size", "9.5px").attr("fill", "#94a3b8")
+      .attr("font-family", "ui-monospace, Menlo, Consolas, monospace")
+      .attr("letter-spacing", "0.08em").text("OPEN " + firstPrice.toFixed(2));
+
+    // Split-fill: green above open, red below — classic terminal look.
+    const defs = svg.append("defs");
+    const gUp = defs.append("linearGradient")
+      .attr("id", "tf-grad-up").attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
+    gUp.append("stop").attr("offset", "0%").attr("stop-color", "rgba(34,197,94,0.55)");
+    gUp.append("stop").attr("offset", "100%").attr("stop-color", "rgba(34,197,94,0.02)");
+    const gDown = defs.append("linearGradient")
+      .attr("id", "tf-grad-down").attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
+    gDown.append("stop").attr("offset", "0%").attr("stop-color", "rgba(239,68,68,0.02)");
+    gDown.append("stop").attr("offset", "100%").attr("stop-color", "rgba(239,68,68,0.55)");
+
+    // Clip the area into above-open and below-open halves.
+    const openY = y(firstPrice);
+    defs.append("clipPath").attr("id", "tf-clip-up")
+      .append("rect").attr("x", margin.left).attr("y", margin.top)
+      .attr("width", width - margin.left - margin.right).attr("height", Math.max(0, openY - margin.top));
+    defs.append("clipPath").attr("id", "tf-clip-down")
+      .append("rect").attr("x", margin.left).attr("y", openY)
+      .attr("width", width - margin.left - margin.right).attr("height", Math.max(0, height - margin.bottom - openY));
+
+    const areaToOpen = d3.area()
       .x((d) => x(new Date(d.timestamp)))
-      .y0(height - margin.bottom)
+      .y0(openY)
       .y1((d) => y(d.price))
       .curve(d3.curveMonotoneX);
 
-    svg.append("path").datum(data).attr("fill", `url(#${gradId})`).attr("d", area);
+    svg.append("path").datum(data).attr("fill", "url(#tf-grad-up)")
+      .attr("clip-path", "url(#tf-clip-up)").attr("d", areaToOpen);
+    svg.append("path").datum(data).attr("fill", "url(#tf-grad-down)")
+      .attr("clip-path", "url(#tf-clip-down)").attr("d", areaToOpen);
 
-    const line = d3
-      .line()
-      .x((d) => x(new Date(d.timestamp)))
-      .y((d) => y(d.price))
-      .curve(d3.curveMonotoneX);
-
-    svg.append("path").datum(data).attr("fill", "none").attr("stroke", lineColor).attr("stroke-width", 1.8).attr("d", line);
+    // Line is drawn segment-by-segment, colored by side relative to open.
+    for (let i = 1; i < data.length; i++) {
+      const a = data[i - 1], b = data[i];
+      const segUp = ((a.price + b.price) / 2) >= firstPrice;
+      svg.append("line")
+        .attr("x1", x(new Date(a.timestamp))).attr("y1", y(a.price))
+        .attr("x2", x(new Date(b.timestamp))).attr("y2", y(b.price))
+        .attr("stroke", segUp ? "#22c55e" : "#ef4444")
+        .attr("stroke-width", 1.8)
+        .attr("stroke-linecap", "round");
+    }
 
     const lastX = x(new Date(data[data.length - 1].timestamp));
     const lastY = y(lastPrice);
 
+    // Last-price guide line + tag
     svg.append("line")
       .attr("x1", margin.left).attr("x2", width - margin.right)
       .attr("y1", lastY).attr("y2", lastY)
       .attr("stroke", lineColor).attr("stroke-opacity", 0.35).attr("stroke-dasharray", "3 4");
-
     svg.append("circle").attr("cx", lastX).attr("cy", lastY).attr("r", 4).attr("fill", lineColor);
-
     svg.append("rect")
       .attr("x", width - margin.right + 2).attr("y", lastY - 10)
-      .attr("width", 50).attr("height", 20).attr("rx", 3).attr("fill", lineColor);
-
+      .attr("width", 56).attr("height", 20).attr("rx", 3).attr("fill", lineColor);
     svg.append("text")
-      .attr("x", width - margin.right + 27).attr("y", lastY + 4)
+      .attr("x", width - margin.right + 30).attr("y", lastY + 4)
       .attr("text-anchor", "middle").attr("font-size", "11px")
       .attr("font-family", "ui-monospace, Menlo, Consolas, monospace")
       .attr("font-weight", "700").attr("fill", "#0b1220").text(lastPrice.toFixed(2));
 
+    // Axes
     const yAxis = svg.append("g").attr("transform", `translate(${width - margin.right},0)`)
       .call(d3.axisRight(y).ticks(6).tickSize(0).tickPadding(6));
     yAxis.selectAll("text").attr("fill", axisColor).attr("font-size", "10px");
@@ -466,6 +510,58 @@ const TradingDashboard = () => {
       .call(d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat("%H:%M:%S")).tickSize(0).tickPadding(6));
     xAxis.selectAll("text").attr("fill", axisColor).attr("font-size", "10px");
     xAxis.select("path").remove();
+
+    // ---- Crosshair + tooltip on hover ----
+    const crosshair = svg.append("g").style("display", "none");
+    const vLine = crosshair.append("line")
+      .attr("y1", margin.top).attr("y2", height - margin.bottom)
+      .attr("stroke", "#94a3b8").attr("stroke-opacity", 0.45).attr("stroke-dasharray", "3 3");
+    const hLine = crosshair.append("line")
+      .attr("x1", margin.left).attr("x2", width - margin.right)
+      .attr("stroke", "#94a3b8").attr("stroke-opacity", 0.45).attr("stroke-dasharray", "3 3");
+    const focus = crosshair.append("circle").attr("r", 4)
+      .attr("fill", "#0b1220").attr("stroke", lineColor).attr("stroke-width", 2);
+
+    const tip = svg.append("g").style("display", "none");
+    const tipBg = tip.append("rect")
+      .attr("rx", 4).attr("fill", "#0b1220").attr("stroke", "#1a2234").attr("stroke-width", 1)
+      .attr("width", 96).attr("height", 36);
+    const tipPrice = tip.append("text")
+      .attr("font-family", "ui-monospace, Menlo, Consolas, monospace")
+      .attr("font-size", "12px").attr("font-weight", "700").attr("fill", "#e5ecf5");
+    const tipTime = tip.append("text")
+      .attr("font-family", "ui-monospace, Menlo, Consolas, monospace")
+      .attr("font-size", "10px").attr("fill", "#8393ab");
+
+    const bisect = d3.bisector((d) => new Date(d.timestamp)).left;
+    const fmtTime = d3.timeFormat("%H:%M:%S");
+
+    svg.append("rect")
+      .attr("x", margin.left).attr("y", margin.top)
+      .attr("width", Math.max(0, width - margin.right - margin.left))
+      .attr("height", Math.max(0, height - margin.bottom - margin.top))
+      .attr("fill", "transparent")
+      .style("cursor", "crosshair")
+      .on("mouseenter", () => { crosshair.style("display", null); tip.style("display", null); })
+      .on("mouseleave", () => { crosshair.style("display", "none"); tip.style("display", "none"); })
+      .on("mousemove", (event) => {
+        const [mx] = d3.pointer(event);
+        const t0 = x.invert(mx);
+        const idx = Math.min(data.length - 1, Math.max(0, bisect(data, t0)));
+        const d = data[idx];
+        const cx = x(new Date(d.timestamp));
+        const cy = y(d.price);
+        vLine.attr("x1", cx).attr("x2", cx);
+        hLine.attr("y1", cy).attr("y2", cy);
+        focus.attr("cx", cx).attr("cy", cy);
+
+        const tipW = 96, tipH = 36, pad = 8;
+        const tx = cx + pad + tipW > width - margin.right ? cx - pad - tipW : cx + pad;
+        const ty = Math.max(margin.top, Math.min(height - margin.bottom - tipH, cy - tipH / 2));
+        tipBg.attr("x", tx).attr("y", ty);
+        tipPrice.attr("x", tx + 8).attr("y", ty + 16).text(d.price.toFixed(2));
+        tipTime.attr("x", tx + 8).attr("y", ty + 30).text(fmtTime(new Date(d.timestamp)));
+      });
   };
 
   const symbolOf = (assetId) =>
@@ -499,36 +595,54 @@ const TradingDashboard = () => {
               {selectedUp ? "▲" : "▼"} {fmt(Math.abs(selectedChange), 2)}%
             </span>
           </div>
-          <div className="flex gap-3.5 font-mono text-[11.5px] tabular-nums">
+          <div className="flex flex-wrap gap-1.5 font-mono text-[11px] tabular-nums">
             {[
               ["O", fmt(sessionStats.open, 2)],
-              ["H", fmt(sessionStats.high, 2)],
-              ["L", fmt(sessionStats.low, 2)],
+              ["H", fmt(sessionStats.high, 2), "text-tf-buy"],
+              ["L", fmt(sessionStats.low, 2), "text-tf-sell"],
               ["MID", fmt(orderBook.midPrice, 2)],
               ["SPRD", spread != null ? fmt(spread, 4) : "—"],
-            ].map(([lbl, val]) => (
-              <span key={lbl} className="flex items-center gap-1.5">
-                <span className={LABEL_MICRO}>{lbl}</span>
-                <b className="font-semibold text-tf-text">{val}</b>
+            ].map(([lbl, val, cls]) => (
+              <span key={lbl} className="inline-flex items-center gap-1.5 rounded-md border border-tf-border bg-black/40 px-2 py-1">
+                <span className="text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-tf-mute">{lbl}</span>
+                <b className={`font-semibold ${cls || "text-tf-text"}`}>{val}</b>
               </span>
             ))}
           </div>
         </div>
 
         {/* Right: account + stream */}
-        <div className="flex items-center justify-end gap-3.5">
-          <div className="flex gap-4">
+        <div className="flex items-center justify-end gap-3">
+          <div className="flex items-stretch gap-2">
             {[
-              ["Equity", fmtCash(portfolio.equity), "text-tf-text"],
-              ["Cash", fmtCash(portfolio.cash), "text-tf-text"],
-              ["Session P&L", (Number(portfolio.sessionPnl || 0) >= 0 ? "+" : "") + fmtCash(portfolio.sessionPnl),
-                Number(portfolio.sessionPnl || 0) >= 0 ? "text-tf-buy" : "text-tf-sell"],
-            ].map(([lbl, val, cls]) => (
-              <div key={lbl} className="flex min-w-[70px] flex-col leading-none">
+              ["Equity", fmtCash(portfolio.equity)],
+              ["Cash", fmtCash(portfolio.cash)],
+            ].map(([lbl, val]) => (
+              <div key={lbl} className="flex min-w-[78px] flex-col justify-center rounded-md border border-tf-border bg-black/30 px-2.5 py-1.5 leading-none">
                 <span className={LABEL_MICRO}>{lbl}</span>
-                <b className={`mt-0.5 font-mono text-[13px] font-bold tabular-nums ${cls}`}>{val}</b>
+                <b className="mt-1 font-mono text-[12.5px] font-bold tabular-nums text-tf-text">{val}</b>
               </div>
             ))}
+            {(() => {
+              const pnl = Number(portfolio.sessionPnl || 0);
+              const up = pnl >= 0;
+              const sign = up ? "+" : "";
+              return (
+                <div className={`flex min-w-[120px] flex-col justify-center rounded-md border px-3 py-1.5 leading-none shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${
+                  up
+                    ? "border-emerald-500/40 bg-gradient-to-b from-emerald-500/15 to-emerald-500/5"
+                    : "border-red-500/40 bg-gradient-to-b from-red-500/15 to-red-500/5"
+                }`}>
+                  <span className="flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-tf-mute">
+                    <span className={`h-1 w-1 rounded-full ${up ? "bg-tf-buy" : "bg-tf-sell"}`} />
+                    Session P&L
+                  </span>
+                  <b className={`mt-1 font-mono text-[16px] font-extrabold tabular-nums tracking-tight ${up ? "text-tf-buy" : "text-tf-sell"}`}>
+                    {sign}{fmtCash(pnl)}
+                  </b>
+                </div>
+              );
+            })()}
           </div>
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10.5px] font-bold uppercase tracking-widest ${
@@ -573,11 +687,13 @@ const TradingDashboard = () => {
           <span className={LABEL_MICRO}>Symbols</span>
           <b className="mt-0.5 font-mono text-[13px] font-bold tabular-nums text-tf-text">{streamStats.symbols || assets.length}</b>
         </div>
-        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto border-l border-tf-border pl-3">
+        <div className="flex min-w-0 flex-1 gap-[3px] overflow-x-auto border-l border-tf-border pl-3">
           {assets.map((a) => {
-            const up = Number(a.changePercent) >= 0;
-            const mag = Math.min(2, Math.abs(Number(a.changePercent) || 0));
-            const intensity = 0.15 + (mag / 2) * 0.55;
+            const chg = Number(a.changePercent) || 0;
+            const up = chg >= 0;
+            const mag = Math.min(2, Math.abs(chg));
+            const intensity = 0.12 + (mag / 2) * 0.6;
+            const active = selectedSymbol === a.symbol;
             return (
               <button
                 key={`heat-${a.symbol}`}
@@ -586,19 +702,21 @@ const TradingDashboard = () => {
                   setSelectedSymbol(a.symbol);
                   setOrderForm((p) => ({ ...p, symbol: a.symbol }));
                 }}
-                title={`${a.symbol} ${fmt(a.price, 2)} (${up ? "+" : ""}${fmt(a.changePercent, 2)}%)`}
-                className={`group flex shrink-0 flex-col items-center justify-center rounded border px-2 py-1 font-mono text-[10px] font-bold leading-tight tabular-nums transition hover:scale-105 ${
-                  selectedSymbol === a.symbol ? "border-tf-accent" : "border-transparent"
+                title={`${a.symbol} ${fmt(a.price, 2)} (${up ? "+" : ""}${fmt(chg, 2)}%)`}
+                className={`group relative flex shrink-0 flex-col items-center justify-center overflow-hidden rounded-[5px] border px-2 py-1 font-mono text-[10px] font-bold leading-tight tabular-nums transition-transform hover:-translate-y-px hover:brightness-110 ${
+                  active
+                    ? "border-tf-accent ring-1 ring-sky-400/40 shadow-[0_0_0_1px_rgba(56,189,248,0.25)]"
+                    : "border-white/5"
                 }`}
                 style={{
                   background: up
-                    ? `rgba(34, 197, 94, ${intensity})`
-                    : `rgba(239, 68, 68, ${intensity})`,
-                  color: up ? "#bbf7d0" : "#fecaca",
+                    ? `linear-gradient(180deg, rgba(34,197,94,${intensity + 0.05}) 0%, rgba(34,197,94,${Math.max(0, intensity - 0.05)}) 100%)`
+                    : `linear-gradient(180deg, rgba(239,68,68,${intensity + 0.05}) 0%, rgba(239,68,68,${Math.max(0, intensity - 0.05)}) 100%)`,
+                  color: up ? "#d1fae5" : "#fee2e2",
                 }}
               >
-                <span className="tracking-wide">{a.symbol}</span>
-                <span className="text-[9px] opacity-80">{up ? "+" : ""}{fmt(a.changePercent, 2)}%</span>
+                <span className="tracking-wider drop-shadow-[0_1px_0_rgba(0,0,0,0.4)]">{a.symbol}</span>
+                <span className="text-[9px] font-semibold opacity-90">{up ? "+" : ""}{fmt(chg, 2)}%</span>
               </button>
             );
           })}
@@ -644,8 +762,8 @@ const TradingDashboard = () => {
                     active ? "bg-sky-500/10 !border-l-tf-accent" : ""
                   } ${flash ? `tf-flash-${flash}-row` : ""}`}
                 >
-                  <span className="text-[11.5px] font-bold tracking-wide text-slate-100">{asset.symbol}</span>
-                  <span className={`justify-self-end font-semibold tabular-nums ${up ? "text-tf-buy" : "text-tf-sell"}`}>
+                  <span className={`text-[11.5px] font-bold tracking-wide ${active ? "text-sky-300" : "text-slate-100"}`}>{asset.symbol}</span>
+                  <span className={`justify-self-end font-semibold tabular-nums ${up ? "text-tf-buy" : "text-tf-sell"} ${flash ? `tf-flash-${flash}-txt` : ""}`}>
                     {fmt(asset.price, 2)}
                   </span>
                   <span className={`min-w-[54px] justify-self-end rounded px-1.5 py-0.5 text-right text-[10.5px] font-bold tabular-nums ${
@@ -708,25 +826,25 @@ const TradingDashboard = () => {
           <div className="grid grid-cols-3 gap-1.5 border-b border-tf-border px-2.5 py-1.5 font-mono text-[9.5px] font-extrabold uppercase tracking-wider text-tf-mute">
             <span>Price</span>
             <span className="text-right">Size</span>
-            <span className="text-right">Total</span>
+            <span className="text-right">Σ Size</span>
           </div>
 
-          {/* Asks */}
+          {/* Asks — rendered worst→best so the best ask sits adjacent to the spread */}
           <div className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto">
-            {(orderBook.asks || []).slice(0, 10).slice().reverse().map((row, i) => {
+            {asksCum.slice().reverse().map((row, i) => {
               const qty = Number(row.quantity) || 0;
-              const pct = Math.min(100, (qty / bookDepth) * 100);
+              const pct = Math.min(100, (row.cum / depthMax) * 100);
               const total = Number(row.price) * qty;
               return (
                 <div key={`ask-${i}-${row.price}`} className="relative grid grid-cols-3 gap-1.5 px-2.5 py-[3px] font-mono text-[11px] tabular-nums leading-tight">
-                  <span className="pointer-events-none absolute inset-y-0 right-0 z-0 bg-red-500/10 transition-[width] duration-300" style={{ width: `${pct}%` }} />
+                  <span className="pointer-events-none absolute inset-y-0 right-0 z-0 bg-gradient-to-l from-red-500/25 to-red-500/5 transition-[width] duration-300" style={{ width: `${pct}%` }} />
                   <span className="relative z-10 font-bold text-tf-sell">{fmt(row.price, 4)}</span>
                   <span className="relative z-10 text-right text-tf-text">{fmt(qty, 2)}</span>
-                  <span className="relative z-10 text-right text-tf-dim">{fmt(total, 0)}</span>
+                  <span className="relative z-10 text-right text-tf-dim">{fmt(row.cum, 0)}</span>
                 </div>
               );
             })}
-            {(!orderBook.asks || orderBook.asks.length === 0) && (
+            {asksCum.length === 0 && (
               <div className="py-3 text-center text-[11px] text-tf-mute">No asks</div>
             )}
           </div>
@@ -739,22 +857,21 @@ const TradingDashboard = () => {
             </span>
           </div>
 
-          {/* Bids */}
+          {/* Bids — rendered best→worst, growing cumulative depth downward */}
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            {(orderBook.bids || []).slice(0, 10).map((row, i) => {
+            {bidsCum.map((row, i) => {
               const qty = Number(row.quantity) || 0;
-              const pct = Math.min(100, (qty / bookDepth) * 100);
-              const total = Number(row.price) * qty;
+              const pct = Math.min(100, (row.cum / depthMax) * 100);
               return (
                 <div key={`bid-${i}-${row.price}`} className="relative grid grid-cols-3 gap-1.5 px-2.5 py-[3px] font-mono text-[11px] tabular-nums leading-tight">
-                  <span className="pointer-events-none absolute inset-y-0 right-0 z-0 bg-emerald-500/10 transition-[width] duration-300" style={{ width: `${pct}%` }} />
+                  <span className="pointer-events-none absolute inset-y-0 right-0 z-0 bg-gradient-to-l from-emerald-500/25 to-emerald-500/5 transition-[width] duration-300" style={{ width: `${pct}%` }} />
                   <span className="relative z-10 font-bold text-tf-buy">{fmt(row.price, 4)}</span>
                   <span className="relative z-10 text-right text-tf-text">{fmt(qty, 2)}</span>
-                  <span className="relative z-10 text-right text-tf-dim">{fmt(total, 0)}</span>
+                  <span className="relative z-10 text-right text-tf-dim">{fmt(row.cum, 0)}</span>
                 </div>
               );
             })}
-            {(!orderBook.bids || orderBook.bids.length === 0) && (
+            {bidsCum.length === 0 && (
               <div className="py-3 text-center text-[11px] text-tf-mute">No bids</div>
             )}
           </div>
@@ -862,13 +979,22 @@ const TradingDashboard = () => {
 
             <button
               type="submit"
-              className={`mt-0.5 rounded-lg border-0 py-2.5 font-mono text-[12.5px] font-extrabold tracking-wider transition active:translate-y-px ${
+              className={`group relative mt-0.5 overflow-hidden rounded-lg border py-3 font-mono text-[12.5px] font-extrabold uppercase tracking-[0.18em] transition active:translate-y-px ${
                 orderForm.side === "BUY"
-                  ? "bg-gradient-to-b from-emerald-500 to-emerald-600 text-emerald-950 shadow-neu-buy hover:brightness-110"
-                  : "bg-gradient-to-b from-red-500 to-red-600 text-red-950 shadow-neu-sell hover:brightness-110"
+                  ? "border-emerald-400/60 bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-600 text-emerald-950 shadow-[0_6px_22px_-6px_rgba(34,197,94,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] hover:brightness-110"
+                  : "border-red-400/60 bg-gradient-to-b from-red-400 via-red-500 to-red-600 text-red-950 shadow-[0_6px_22px_-6px_rgba(239,68,68,0.55),inset_0_1px_0_rgba(255,255,255,0.3)] hover:brightness-110"
               }`}
             >
-              {orderForm.side} · {orderForm.orderType} · {orderForm.quantity} {orderForm.symbol}
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/40" />
+              <span className="relative flex items-center justify-center gap-2">
+                <span className="text-[14px]">{orderForm.side === "BUY" ? "▲" : "▼"}</span>
+                <span>{orderForm.side}</span>
+                <span className="opacity-50">·</span>
+                <span>{orderForm.orderType}</span>
+                <span className="opacity-50">·</span>
+                <span className="tabular-nums">{orderForm.quantity}</span>
+                <span>{orderForm.symbol}</span>
+              </span>
             </button>
 
             {message && (
@@ -925,13 +1051,17 @@ const TradingDashboard = () => {
               cols="grid-cols-[90px_1.6fr_1fr_1fr_1fr]"
               rows={portfolio.positions || []}
               empty="No open positions."
-              render={(p) => [
-                <span key="s" className="font-bold tracking-wide text-slate-100">{p.symbol}</span>,
-                <span key="n" className="text-tf-dim">{p.assetName}</span>,
-                <span key="q">{fmt(p.quantity, 4)}</span>,
-                <span key="p">${fmt(p.currentPrice, 2)}</span>,
-                <span key="v">${fmt(p.marketValue, 0)}</span>,
-              ]}
+              render={(p) => {
+                const live = assets.find((a) => a.symbol === p.symbol);
+                const liveUp = live ? Number(live.changePercent) >= 0 : true;
+                return [
+                  <span key="s" className="font-bold tracking-wide text-sky-300">{p.symbol}</span>,
+                  <span key="n" className="text-tf-dim">{p.assetName}</span>,
+                  <span key="q" className="font-semibold text-tf-text tabular-nums">{fmt(p.quantity, 4)}</span>,
+                  <span key="p" className={`font-semibold tabular-nums ${liveUp ? "text-tf-buy" : "text-tf-sell"}`}>${fmt(p.currentPrice, 2)}</span>,
+                  <span key="v" className="font-bold tabular-nums text-slate-100">${fmt(p.marketValue, 0)}</span>,
+                ];
+              }}
             />
           )}
           {bottomTab === "working" && (
