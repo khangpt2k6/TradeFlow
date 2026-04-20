@@ -12,8 +12,6 @@ const BRAND_SHELL_PATHS = [...TRADING_PATHS, "/welcome"];
 
 function AppContent() {
   const location = useLocation();
-  const isAuthPage = ["/welcome"].includes(location.pathname);
-  const isTradingPage = TRADING_PATHS.includes(location.pathname);
 
   useEffect(() => {
     if (BRAND_SHELL_PATHS.includes(location.pathname)) {
@@ -25,10 +23,10 @@ function AppContent() {
   }, [location.pathname]);
 
   return (
-    <div className="App min-h-screen">
+    <div className="min-h-screen text-tf-text">
       <Navigation />
 
-      <div className={`main-content ${isAuthPage || isTradingPage ? "auth-layout" : ""}`}>
+      <div>
         <Routes>
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/" element={<TradingDashboard />} />

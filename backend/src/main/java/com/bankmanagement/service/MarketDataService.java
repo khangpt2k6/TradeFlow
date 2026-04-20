@@ -19,20 +19,23 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class MarketDataService {
 
-    private static final int HISTORY_LIMIT = 180;
+    private static final int HISTORY_LIMIT = 240;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
     private final AssetRepository assetRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final TradingService tradingService;
-    private final Random random = new Random();
     private final Map<String, Deque<Map<String, Object>>> priceHistory = new ConcurrentHashMap<>();
+    private final AtomicLong tickCount = new AtomicLong(0);
+    private final AtomicLong lastBatchTs = new AtomicLong(System.currentTimeMillis());
+    private final AtomicLong lastBatchSize = new AtomicLong(0);
 
     public MarketDataService(AssetRepository assetRepository,
                              SimpMessagingTemplate messagingTemplate,
@@ -62,24 +65,54 @@ public class MarketDataService {
             return;
         }
 
-        List<Map<String, Object>> ticks = new ArrayList<>();
-        for (Asset asset : assets) {
-            Asset updated = applyPriceMovement(asset);
-            ticks.add(toTick(updated));
-            addHistoryPoint(updated.getSymbol(), updated.getCurrentPrice());
-        }
-        assetRepository.saveAll(assets);
+        // Parallelize price movement across cores — CPU-bound math scales linearly with symbol count.
+        List<Map<String, Object>> ticks = assets.parallelStream()
+            .map(asset -> {
+                Asset updated = applyPriceMovement(asset);
+                addHistoryPoint(updated.getSymbol(), updated.getCurrentPrice());
+                return toTick(updated);
+            })
+            .toList();
 
-        for (Asset updated : assets) {
-            tradingService.onMarketPrice(updated.getSymbol(), updated.getCurrentPrice());
-        }
+        assetRepository.saveAll(assets);
+        assets.parallelStream().forEach(a -> tradingService.onMarketPrice(a.getSymbol(), a.getCurrentPrice()));
+
+        long total = tickCount.addAndGet(ticks.size());
+        long now = Instant.now().toEpochMilli();
+        long prev = lastBatchTs.getAndSet(now);
+        lastBatchSize.set(ticks.size());
+        long dt = Math.max(1, now - prev);
+        long tps = (ticks.size() * 1000L) / dt;
+
+        // Market breadth: share of symbols currently positive on the session.
+        long advancers = ticks.stream()
+            .filter(t -> {
+                Object ch = t.get("changePercent");
+                return ch instanceof BigDecimal b && b.signum() > 0;
+            })
+            .count();
+        long decliners = ticks.size() - advancers;
 
         Map<String, Object> payload = new HashMap<>();
-        payload.put("timestamp", Instant.now().toEpochMilli());
+        payload.put("timestamp", now);
         payload.put("updates", ticks);
-        payload.put("updatesPerSecond", ticks.size() * 2);
+        payload.put("ticksPerSecond", tps);
+        payload.put("totalTicks", total);
+        payload.put("advancers", advancers);
+        payload.put("decliners", decliners);
+        payload.put("symbolCount", ticks.size());
 
         messagingTemplate.convertAndSend("/topic/market", payload);
+    }
+
+    /** Snapshot of live tick stream metrics — consumed by the dashboard and /api/trading/metrics. */
+    public Map<String, Object> getTickStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalTicks", tickCount.get());
+        stats.put("lastBatchSize", lastBatchSize.get());
+        stats.put("lastBatchAt", lastBatchTs.get());
+        stats.put("symbolCount", priceHistory.size());
+        return stats;
     }
 
     public List<Map<String, Object>> getActiveAssets() {
@@ -103,7 +136,8 @@ public class MarketDataService {
     private Asset applyPriceMovement(Asset asset) {
         BigDecimal previous = asset.getCurrentPrice();
         BigDecimal maxMovePercent = BigDecimal.valueOf(0.9); // max +-0.9%
-        BigDecimal movement = BigDecimal.valueOf((random.nextDouble() * 2) - 1)
+        // ThreadLocalRandom is lock-free per thread — required for parallelStream tick processing.
+        BigDecimal movement = BigDecimal.valueOf((ThreadLocalRandom.current().nextDouble() * 2) - 1)
             .multiply(maxMovePercent)
             .divide(ONE_HUNDRED, 6, RoundingMode.HALF_UP);
 
@@ -154,13 +188,41 @@ public class MarketDataService {
 
     private List<Asset> seedAssets() {
         List<Asset> assets = new ArrayList<>();
+        // Mega-cap tech
         assets.add(newAsset("AAPL", "Apple Inc.", Asset.AssetType.STOCK, "3.20T", 192.12));
         assets.add(newAsset("MSFT", "Microsoft Corp.", Asset.AssetType.STOCK, "3.05T", 428.17));
         assets.add(newAsset("NVDA", "NVIDIA Corp.", Asset.AssetType.STOCK, "2.67T", 885.92));
+        assets.add(newAsset("GOOGL", "Alphabet Inc.", Asset.AssetType.STOCK, "2.10T", 172.35));
+        assets.add(newAsset("AMZN", "Amazon.com Inc.", Asset.AssetType.STOCK, "1.92T", 188.77));
+        assets.add(newAsset("META", "Meta Platforms", Asset.AssetType.STOCK, "1.28T", 502.18));
         assets.add(newAsset("TSLA", "Tesla Inc.", Asset.AssetType.STOCK, "610B", 175.21));
+        assets.add(newAsset("NFLX", "Netflix Inc.", Asset.AssetType.STOCK, "265B", 612.90));
+        assets.add(newAsset("AMD", "Advanced Micro Devices", Asset.AssetType.STOCK, "258B", 158.22));
+        assets.add(newAsset("INTC", "Intel Corp.", Asset.AssetType.STOCK, "148B", 34.81));
+        assets.add(newAsset("ORCL", "Oracle Corp.", Asset.AssetType.STOCK, "335B", 121.42));
+        assets.add(newAsset("CRM", "Salesforce Inc.", Asset.AssetType.STOCK, "280B", 289.66));
+        // Finance
+        assets.add(newAsset("JPM", "JPMorgan Chase", Asset.AssetType.STOCK, "570B", 198.14));
+        assets.add(newAsset("BAC", "Bank of America", Asset.AssetType.STOCK, "320B", 40.83));
+        assets.add(newAsset("GS", "Goldman Sachs", Asset.AssetType.STOCK, "145B", 456.12));
+        assets.add(newAsset("V", "Visa Inc.", Asset.AssetType.STOCK, "560B", 275.30));
+        assets.add(newAsset("MA", "Mastercard Inc.", Asset.AssetType.STOCK, "445B", 478.55));
+        // Energy / industrial / consumer
+        assets.add(newAsset("XOM", "Exxon Mobil", Asset.AssetType.STOCK, "465B", 116.27));
+        assets.add(newAsset("CVX", "Chevron Corp.", Asset.AssetType.STOCK, "290B", 157.44));
+        assets.add(newAsset("BA", "Boeing Co.", Asset.AssetType.STOCK, "108B", 178.16));
+        assets.add(newAsset("DIS", "Walt Disney Co.", Asset.AssetType.STOCK, "205B", 112.77));
+        assets.add(newAsset("WMT", "Walmart Inc.", Asset.AssetType.STOCK, "495B", 61.20));
+        assets.add(newAsset("KO", "Coca-Cola Co.", Asset.AssetType.STOCK, "265B", 61.75));
+        assets.add(newAsset("PFE", "Pfizer Inc.", Asset.AssetType.STOCK, "160B", 28.33));
+        assets.add(newAsset("UBER", "Uber Technologies", Asset.AssetType.STOCK, "155B", 74.21));
+        // Crypto
         assets.add(newAsset("BTCUSD", "Bitcoin", Asset.AssetType.CRYPTOCURRENCY, "1.30T", 67712.34));
         assets.add(newAsset("ETHUSD", "Ethereum", Asset.AssetType.CRYPTOCURRENCY, "420B", 3541.76));
+        assets.add(newAsset("SOLUSD", "Solana", Asset.AssetType.CRYPTOCURRENCY, "75B", 165.42));
+        // Commodities
         assets.add(newAsset("XAUUSD", "Gold Spot", Asset.AssetType.COMMODITY, "N/A", 2315.45));
+        assets.add(newAsset("XAGUSD", "Silver Spot", Asset.AssetType.COMMODITY, "N/A", 27.84));
         return assets;
     }
 

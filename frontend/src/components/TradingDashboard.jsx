@@ -72,6 +72,8 @@ const TradingDashboard = () => {
   const [message, setMessage] = useState("");
   const [bottomTab, setBottomTab] = useState("positions");
   const [flashMap, setFlashMap] = useState({});
+  const [streamStats, setStreamStats] = useState({ tps: 0, advancers: 0, decliners: 0, symbols: 0 });
+  const [watchFilter, setWatchFilter] = useState("");
 
   const chartRef = useRef(null);
   const latestAssets = useRef([]);
@@ -111,6 +113,12 @@ const TradingDashboard = () => {
 
           latestAssets.current = payload.updates;
           setAssets(payload.updates);
+          setStreamStats({
+            tps: Number(payload.ticksPerSecond) || 0,
+            advancers: Number(payload.advancers) || 0,
+            decliners: Number(payload.decliners) || 0,
+            symbols: Number(payload.symbolCount) || payload.updates.length,
+          });
 
           const selected = payload.updates.find((asset) => asset.symbol === selectedSymbol);
           if (selected) {
@@ -474,19 +482,8 @@ const TradingDashboard = () => {
   return (
     <div className="tf-shell relative mx-auto max-w-[1760px] px-3.5 pt-3 pb-5 text-tf-text text-[12.5px]">
       {/* ================ Top bar ================ */}
-      <div className="mb-3 grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl border border-tf-border bg-tf-panel px-4 py-2.5 shadow-neu">
-        {/* Brand */}
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-8 w-8 place-items-center rounded-lg font-mono text-xs font-extrabold tracking-widest text-emerald-950 bg-gradient-to-br from-emerald-400 to-green-500 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12),0_4px_12px_rgba(34,197,94,0.3)]">
-            TF
-          </div>
-          <div className="leading-tight">
-            <div className="text-sm font-extrabold tracking-wide text-slate-100">TradeFlow</div>
-            <div className="text-[9.5px] font-bold uppercase tracking-[0.18em] text-tf-mute">Market Simulator · Paper</div>
-          </div>
-        </div>
-
-        {/* Center: ticker + OHL */}
+      <div className="mb-3 grid grid-cols-[1fr_auto] items-center gap-4 rounded-xl border border-tf-border bg-tf-panel px-4 py-2.5 shadow-neu">
+        {/* Ticker + OHL */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-1">
           <div className="flex items-baseline gap-2.5 font-mono">
             <span className="text-lg font-extrabold tracking-wider text-slate-50">{selectedSymbol || "—"}</span>
@@ -558,21 +555,80 @@ const TradingDashboard = () => {
         </div>
       </div>
 
+      {/* ================ Market breadth strip ================ */}
+      <div className="mb-2.5 flex items-center gap-3 overflow-hidden rounded-xl border border-tf-border bg-tf-panel px-3 py-2 shadow-neu-raised">
+        <div className="flex shrink-0 flex-col leading-none">
+          <span className={LABEL_MICRO}>Breadth</span>
+          <div className="mt-1 flex items-center gap-1.5 font-mono text-[11px] font-bold tabular-nums">
+            <span className="text-tf-buy">▲{streamStats.advancers}</span>
+            <span className="text-tf-mute">/</span>
+            <span className="text-tf-sell">▼{streamStats.decliners}</span>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col leading-none border-l border-tf-border pl-3">
+          <span className={LABEL_MICRO}>Ticks/s</span>
+          <b className="mt-0.5 font-mono text-[13px] font-bold tabular-nums text-tf-accent">{streamStats.tps}</b>
+        </div>
+        <div className="flex shrink-0 flex-col leading-none border-l border-tf-border pl-3">
+          <span className={LABEL_MICRO}>Symbols</span>
+          <b className="mt-0.5 font-mono text-[13px] font-bold tabular-nums text-tf-text">{streamStats.symbols || assets.length}</b>
+        </div>
+        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto border-l border-tf-border pl-3">
+          {assets.map((a) => {
+            const up = Number(a.changePercent) >= 0;
+            const mag = Math.min(2, Math.abs(Number(a.changePercent) || 0));
+            const intensity = 0.15 + (mag / 2) * 0.55;
+            return (
+              <button
+                key={`heat-${a.symbol}`}
+                type="button"
+                onClick={() => {
+                  setSelectedSymbol(a.symbol);
+                  setOrderForm((p) => ({ ...p, symbol: a.symbol }));
+                }}
+                title={`${a.symbol} ${fmt(a.price, 2)} (${up ? "+" : ""}${fmt(a.changePercent, 2)}%)`}
+                className={`group flex shrink-0 flex-col items-center justify-center rounded border px-2 py-1 font-mono text-[10px] font-bold leading-tight tabular-nums transition hover:scale-105 ${
+                  selectedSymbol === a.symbol ? "border-tf-accent" : "border-transparent"
+                }`}
+                style={{
+                  background: up
+                    ? `rgba(34, 197, 94, ${intensity})`
+                    : `rgba(239, 68, 68, ${intensity})`,
+                  color: up ? "#bbf7d0" : "#fecaca",
+                }}
+              >
+                <span className="tracking-wide">{a.symbol}</span>
+                <span className="text-[9px] opacity-80">{up ? "+" : ""}{fmt(a.changePercent, 2)}%</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ================ Workspace ================ */}
-      <div className="mb-2.5 grid gap-2.5 grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_260px] xl:grid-cols-[210px_minmax(0,1fr)_280px_300px]">
+      <div className="mb-2.5 grid gap-2.5 grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)_260px] xl:grid-cols-[230px_minmax(0,1fr)_280px_300px]">
         {/* Watchlist */}
-        <aside className={`${PANEL} min-h-[480px]`}>
+        <aside className={`${PANEL} h-[560px]`}>
           <header className={PANEL_HEAD}>
             <span className={PANEL_TITLE}>Watchlist</span>
             <span className={PANEL_SUB}>{assets.length} symbols</span>
           </header>
+          <div className="border-b border-tf-border bg-black/40 px-2 py-1.5">
+            <input
+              type="text"
+              value={watchFilter}
+              onChange={(e) => setWatchFilter(e.target.value)}
+              placeholder="Filter…"
+              className="w-full rounded border border-tf-border bg-[#070b12] px-2 py-1 font-mono text-[11px] uppercase text-tf-text outline-none placeholder:text-tf-mute focus:border-tf-accent"
+            />
+          </div>
           <div className="sticky top-0 z-10 grid grid-cols-[1fr_minmax(0,1fr)_auto] gap-1.5 border-b border-tf-border bg-[#080c14] px-2.5 py-1.5 font-mono text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-tf-mute">
             <span>Symbol</span>
             <span className="text-right">Last</span>
             <span className="text-right">Chg%</span>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {assets.map((asset) => {
+            {assets.filter((a) => !watchFilter || a.symbol.toLowerCase().includes(watchFilter.toLowerCase()) || (a.name || "").toLowerCase().includes(watchFilter.toLowerCase())).map((asset) => {
               const up = Number(asset.changePercent) >= 0;
               const active = selectedSymbol === asset.symbol;
               const flash = flashMap[asset.symbol];
@@ -742,7 +798,7 @@ const TradingDashboard = () => {
                 onChange={(e) => setOrderForm((p) => ({ ...p, symbol: e.target.value }))}
               >
                 {assets.map((a) => (
-                  <option key={a.symbol} value={a.symbol}>{a.symbol}</option>
+                  <option key={a.symbol} value={a.symbol} style={{ background: "#0b1018", color: "#e5ecf5" }}>{a.symbol}</option>
                 ))}
               </select>
             </label>
@@ -754,8 +810,8 @@ const TradingDashboard = () => {
                 value={orderForm.orderType}
                 onChange={(e) => setOrderForm((p) => ({ ...p, orderType: e.target.value, limitPrice: p.limitPrice }))}
               >
-                <option value="MARKET">MARKET</option>
-                <option value="LIMIT">LIMIT</option>
+                <option value="MARKET" style={{ background: "#0b1018", color: "#e5ecf5" }}>MARKET</option>
+                <option value="LIMIT" style={{ background: "#0b1018", color: "#e5ecf5" }}>LIMIT</option>
               </select>
             </label>
 

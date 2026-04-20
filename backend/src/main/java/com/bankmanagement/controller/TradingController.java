@@ -77,7 +77,9 @@ public class TradingController {
 
     @GetMapping("/metrics")
     public ResponseEntity<?> metrics() {
-        return ResponseEntity.ok(tradingService.getEngineMetrics());
+        Map<String, Object> merged = new HashMap<>(tradingService.getEngineMetrics());
+        merged.putAll(marketDataService.getTickStats());
+        return ResponseEntity.ok(merged);
     }
 
     @GetMapping("/order-book/{symbol}")

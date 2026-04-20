@@ -10,9 +10,7 @@ body.trading-terminal-mode {
   color: var(--text-primary);
 }
 
-body.trading-terminal-mode .App {
-  color: var(--text-primary);
-}
+body.trading-terminal-mode .App { color: var(--text-primary); }
 
 body.trading-terminal-mode::before,
 body.trading-terminal-mode::after {
@@ -20,9 +18,7 @@ body.trading-terminal-mode::after {
   filter: blur(88px);
 }
 
-/* ================================================================
-   Subtle terminal grid — sits behind .tf-shell content
-   ================================================================ */
+/* Subtle terminal grid behind .tf-shell */
 body.trading-terminal-mode .tf-shell::before {
   content: "";
   position: fixed;
@@ -37,34 +33,24 @@ body.trading-terminal-mode .tf-shell::before {
   mask-image: radial-gradient(ellipse 80% 80% at 50% 40%, #000 40%, transparent 95%);
 }
 
-/* ================================================================
-   Motion feedback — price flash & pulsing status
-   ================================================================ */
-.tf-flash-up-row {
-  animation: tfRowFlashUp 0.55s ease-out;
-}
-.tf-flash-down-row {
-  animation: tfRowFlashDown 0.55s ease-out;
-}
+/* Motion feedback — price flash animations (keyframes can't be Tailwind utilities) */
+.tf-flash-up-row { animation: tfRowFlashUp 0.55s ease-out; }
+.tf-flash-down-row { animation: tfRowFlashDown 0.55s ease-out; }
+.tf-flash-up-txt { animation: tfTxtFlashUp 0.55s ease-out; }
+.tf-flash-down-txt { animation: tfTxtFlashDown 0.55s ease-out; }
 
 @keyframes tfRowFlashUp {
   0% { background: rgba(34, 197, 94, 0.28); box-shadow: inset 3px 0 0 #22c55e; }
   100% { background: transparent; box-shadow: none; }
 }
-
 @keyframes tfRowFlashDown {
   0% { background: rgba(239, 68, 68, 0.28); box-shadow: inset 3px 0 0 #ef4444; }
   100% { background: transparent; box-shadow: none; }
 }
-
-.tf-flash-up-txt { animation: tfTxtFlashUp 0.55s ease-out; }
-.tf-flash-down-txt { animation: tfTxtFlashDown 0.55s ease-out; }
-
 @keyframes tfTxtFlashUp {
   0% { text-shadow: 0 0 18px rgba(34, 197, 94, 0.9), 0 0 4px rgba(34, 197, 94, 0.6); }
   100% { text-shadow: none; }
 }
-
 @keyframes tfTxtFlashDown {
   0% { text-shadow: 0 0 18px rgba(239, 68, 68, 0.9), 0 0 4px rgba(239, 68, 68, 0.6); }
   100% { text-shadow: none; }
@@ -75,205 +61,13 @@ body.trading-terminal-mode .tf-shell::before {
   font-weight: 700;
   text-shadow: 0 0 8px rgba(250, 204, 21, 0.25);
 }
-
 .tf-status-pending::before {
   content: "●";
   margin-right: 4px;
   font-size: 0.7em;
   animation: tfPulseAmber 1.4s ease-in-out infinite;
 }
-
 @keyframes tfPulseAmber {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
-
-/* ================================================================
-   Navbar (Navigation.jsx)
-   ================================================================ */
-body.trading-terminal-mode .navbar-glass {
-  border-color: rgba(45, 212, 191, 0.22);
-  background: linear-gradient(180deg, rgba(12, 16, 26, 0.97) 0%, rgba(8, 11, 18, 0.94) 100%);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-}
-
-body.trading-terminal-mode .navbar-glass.navbar-glass--terminal {
-  border-bottom: 1px solid rgba(52, 211, 153, 0.28);
-}
-
-body.trading-terminal-mode .navbar-container {
-  min-height: 4rem;
-}
-
-body.trading-terminal-mode .navbar-container--shell {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  column-gap: 1rem;
-}
-
-@media (max-width: 767px) {
-  body.trading-terminal-mode .navbar-container--shell {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-}
-
-body.trading-terminal-mode .navbar-brand {
-  color: #f1f5f9;
-  gap: 0.65rem;
-  min-width: 0;
-}
-
-body.trading-terminal-mode .navbar-brand--lockup {
-  align-items: center;
-  gap: 0.85rem;
-}
-
-body.trading-terminal-mode .navbar-logo-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  background: radial-gradient(120% 120% at 30% 20%, rgba(34, 197, 94, 0.18), rgba(56, 189, 248, 0.05) 55%, transparent 70%);
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.12) inset, 0 8px 24px rgba(0, 0, 0, 0.45);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-body.trading-terminal-mode .navbar-brand:hover .navbar-logo-mark {
-  transform: translateY(-1px);
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.28) inset, 0 10px 28px rgba(34, 197, 94, 0.18);
-}
-
-body.trading-terminal-mode .navbar-brand-text {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  color: #f8fafc;
-  line-height: 1;
-}
-
-body.trading-terminal-mode .navbar-brand-accent {
-  background: linear-gradient(100deg, #22c55e 10%, #5eead4 45%, #38bdf8 90%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-body.trading-terminal-mode .navbar-brand-tagline {
-  margin-top: 0.22rem;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-body.trading-terminal-mode .navbar-nav-cluster {
-  justify-self: center;
-  width: fit-content;
-  max-width: 100%;
-  border-color: rgba(51, 65, 85, 0.9);
-  background: rgba(9, 13, 22, 0.88);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 10px 36px rgba(0, 0, 0, 0.45);
-}
-
-body.trading-terminal-mode .nav-tab {
-  color: #94a3b8;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-  padding: 0.42rem 1rem;
-}
-
-body.trading-terminal-mode .nav-tab:hover {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-body.trading-terminal-mode .nav-tab.is-active {
-  color: #ecfdf5;
-  background: linear-gradient(165deg, rgba(13, 99, 72, 0.55), rgba(6, 46, 38, 0.75));
-  border: 1px solid rgba(52, 211, 153, 0.42);
-  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.18);
-}
-
-body.trading-terminal-mode .nav-tab svg { color: #5eead4; opacity: 0.88; }
-body.trading-terminal-mode .nav-tab.is-active svg { color: #a7f3d0; opacity: 1; }
-
-body.trading-terminal-mode .navbar-status-pill {
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #a7f3d0;
-  border: 1px solid rgba(52, 211, 153, 0.35);
-  background: rgba(6, 78, 59, 0.35);
-}
-
-body.trading-terminal-mode .navbar-status-dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 9999px;
-  background: #34d399;
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.85);
-  animation: tfPulse 2s ease-in-out infinite;
-}
-
-@keyframes tfPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-
-body.trading-terminal-mode .navbar-clock {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.05rem;
-  padding: 0.32rem 0.75rem;
-  border-radius: 0.55rem;
-  border: 1px solid rgba(56, 189, 248, 0.18);
-  background: linear-gradient(180deg, rgba(13, 22, 38, 0.88), rgba(8, 12, 20, 0.92));
-  font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
-body.trading-terminal-mode .navbar-clock__label {
-  font-size: 0.55rem;
-  font-weight: 800;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-body.trading-terminal-mode .navbar-clock__value {
-  font-size: 0.92rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #e8f1ff;
-  font-variant-numeric: tabular-nums;
-}
-
-body.trading-terminal-mode .mobile-menu-toggle { color: #cbd5e1; }
-body.trading-terminal-mode .mobile-menu-toggle:hover { background: rgba(255, 255, 255, 0.06); }
-
-body.trading-terminal-mode .mobile-menu {
-  border-color: rgba(56, 189, 248, 0.2);
-  background: rgba(10, 14, 22, 0.95);
-}
-
-body.trading-terminal-mode .mobile-nav-link { color: #e2e8f0; }
-
-body.trading-terminal-mode .mobile-nav-link.is-active {
-  border-left: 3px solid #34d399;
-  background: rgba(45, 212, 191, 0.08);
-  padding-left: calc(1rem - 3px);
-}
-
-body.trading-terminal-mode .navbar-right { gap: 0.65rem; }
