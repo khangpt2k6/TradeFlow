@@ -1,17 +1,35 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import * as d3 from "d3";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import { Responsive, WidthProvider } from "react-grid-layout";
+import CandlestickChart from "./widgets/CandlestickChart";
+import ScannerWidget from "./widgets/ScannerWidget";
 import { API_BASE_URL } from "../config/api";
 
-const API_ORIGIN_LABEL = (() => {
+const ResponsiveGridLayout = WidthProvider(Responsive);
+
+const LAYOUT_STORAGE_KEY = "tf.workspace.layout.v1";
+
+const DEFAULT_LAYOUT_LG = [
+  { i: "watchlist", x: 0,  y: 0,  w: 2,  h: 14, minW: 2, minH: 6  },
+  { i: "chart",     x: 2,  y: 0,  w: 6,  h: 14, minW: 4, minH: 8  },
+  { i: "book",      x: 8,  y: 0,  w: 2,  h: 14, minW: 2, minH: 8  },
+  { i: "ticket",    x: 10, y: 0,  w: 2,  h: 14, minW: 2, minH: 10 },
+  { i: "scanner",   x: 0,  y: 14, w: 2,  h: 10, minW: 2, minH: 6  },
+  { i: "bottom",    x: 2,  y: 14, w: 10, h: 10, minW: 4, minH: 6  },
+];
+
+const loadSavedLayouts = () => {
   try {
-    return new URL(API_BASE_URL).host;
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
   } catch {
-    return API_BASE_URL;
+    return null;
   }
-})();
+};
 
 const fmt = (n, d = 2) =>
   Number.isFinite(Number(n))
@@ -75,9 +93,20 @@ const TradingDashboard = () => {
   const [streamStats, setStreamStats] = useState({ tps: 0, advancers: 0, decliners: 0, symbols: 0 });
   const [watchFilter, setWatchFilter] = useState("");
 
-  const chartRef = useRef(null);
   const latestAssets = useRef([]);
   const prevPricesRef = useRef({});
+
+  const [layouts, setLayouts] = useState(
+    () => loadSavedLayouts() || { lg: DEFAULT_LAYOUT_LG },
+  );
+  const onLayoutChange = (_current, all) => {
+    setLayouts(all);
+    try { localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(all)); } catch {}
+  };
+  const resetLayout = () => {
+    try { localStorage.removeItem(LAYOUT_STORAGE_KEY); } catch {}
+    setLayouts({ lg: DEFAULT_LAYOUT_LG });
+  };
 
   useEffect(() => {
     fetchAssets();
@@ -142,16 +171,6 @@ const TradingDashboard = () => {
       client.deactivate();
     };
   }, [selectedSymbol]);
-
-  useEffect(() => {
-    renderD3Chart(series);
-  }, [series]);
-
-  useEffect(() => {
-    const handle = () => renderD3Chart(series);
-    window.addEventListener("resize", handle);
-    return () => window.removeEventListener("resize", handle);
-  }, [series]);
 
   // Price-flash tracking for motion feedback
   useEffect(() => {
@@ -375,194 +394,6 @@ const TradingDashboard = () => {
     return qty * price;
   }, [orderForm, selectedAsset]);
 
-  const renderD3Chart = (data) => {
-    const container = chartRef.current;
-    if (!container) return;
-    const width = container.clientWidth || 800;
-    const height = container.clientHeight || 360;
-    const margin = { top: 14, right: 64, bottom: 24, left: 12 };
-
-    d3.select(container).selectAll("*").remove();
-    if (!data || data.length === 0) return;
-
-    const firstPrice = data[0].price;
-    const lastPrice = data[data.length - 1].price;
-    const up = lastPrice >= firstPrice;
-    const lineColor = up ? "#22c55e" : "#ef4444";
-    const axisColor = "#64748b";
-    const gridColor = "rgba(148,163,184,0.13)";
-    const refColor = "rgba(148,163,184,0.45)";
-
-    const svg = d3
-      .select(container)
-      .append("svg")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("viewBox", `0 0 ${width} ${height}`);
-
-    const x = d3
-      .scaleTime()
-      .domain(d3.extent(data, (d) => new Date(d.timestamp)))
-      .range([margin.left, width - margin.right]);
-
-    const y = d3
-      .scaleLinear()
-      .domain(d3.extent(data, (d) => d.price))
-      .nice()
-      .range([height - margin.bottom, margin.top]);
-
-    // Horizontal gridlines
-    const gridGroup = svg.append("g");
-    y.ticks(6).forEach((t) => {
-      gridGroup.append("line")
-        .attr("x1", margin.left).attr("x2", width - margin.right)
-        .attr("y1", y(t)).attr("y2", y(t))
-        .attr("stroke", gridColor);
-    });
-
-    // Vertical gridlines (time)
-    x.ticks(6).forEach((t) => {
-      gridGroup.append("line")
-        .attr("x1", x(t)).attr("x2", x(t))
-        .attr("y1", margin.top).attr("y2", height - margin.bottom)
-        .attr("stroke", gridColor);
-    });
-
-    // Open-price reference line
-    svg.append("line")
-      .attr("x1", margin.left).attr("x2", width - margin.right)
-      .attr("y1", y(firstPrice)).attr("y2", y(firstPrice))
-      .attr("stroke", refColor).attr("stroke-width", 1).attr("stroke-dasharray", "2 4");
-    svg.append("text")
-      .attr("x", margin.left + 4).attr("y", y(firstPrice) - 4)
-      .attr("font-size", "9.5px").attr("fill", "#94a3b8")
-      .attr("font-family", "ui-monospace, Menlo, Consolas, monospace")
-      .attr("letter-spacing", "0.08em").text("OPEN " + firstPrice.toFixed(2));
-
-    // Split-fill: green above open, red below — classic terminal look.
-    const defs = svg.append("defs");
-    const gUp = defs.append("linearGradient")
-      .attr("id", "tf-grad-up").attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
-    gUp.append("stop").attr("offset", "0%").attr("stop-color", "rgba(34,197,94,0.55)");
-    gUp.append("stop").attr("offset", "100%").attr("stop-color", "rgba(34,197,94,0.02)");
-    const gDown = defs.append("linearGradient")
-      .attr("id", "tf-grad-down").attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
-    gDown.append("stop").attr("offset", "0%").attr("stop-color", "rgba(239,68,68,0.02)");
-    gDown.append("stop").attr("offset", "100%").attr("stop-color", "rgba(239,68,68,0.55)");
-
-    // Clip the area into above-open and below-open halves.
-    const openY = y(firstPrice);
-    defs.append("clipPath").attr("id", "tf-clip-up")
-      .append("rect").attr("x", margin.left).attr("y", margin.top)
-      .attr("width", width - margin.left - margin.right).attr("height", Math.max(0, openY - margin.top));
-    defs.append("clipPath").attr("id", "tf-clip-down")
-      .append("rect").attr("x", margin.left).attr("y", openY)
-      .attr("width", width - margin.left - margin.right).attr("height", Math.max(0, height - margin.bottom - openY));
-
-    const areaToOpen = d3.area()
-      .x((d) => x(new Date(d.timestamp)))
-      .y0(openY)
-      .y1((d) => y(d.price))
-      .curve(d3.curveMonotoneX);
-
-    svg.append("path").datum(data).attr("fill", "url(#tf-grad-up)")
-      .attr("clip-path", "url(#tf-clip-up)").attr("d", areaToOpen);
-    svg.append("path").datum(data).attr("fill", "url(#tf-grad-down)")
-      .attr("clip-path", "url(#tf-clip-down)").attr("d", areaToOpen);
-
-    // Line is drawn segment-by-segment, colored by side relative to open.
-    for (let i = 1; i < data.length; i++) {
-      const a = data[i - 1], b = data[i];
-      const segUp = ((a.price + b.price) / 2) >= firstPrice;
-      svg.append("line")
-        .attr("x1", x(new Date(a.timestamp))).attr("y1", y(a.price))
-        .attr("x2", x(new Date(b.timestamp))).attr("y2", y(b.price))
-        .attr("stroke", segUp ? "#22c55e" : "#ef4444")
-        .attr("stroke-width", 1.8)
-        .attr("stroke-linecap", "round");
-    }
-
-    const lastX = x(new Date(data[data.length - 1].timestamp));
-    const lastY = y(lastPrice);
-
-    // Last-price guide line + tag
-    svg.append("line")
-      .attr("x1", margin.left).attr("x2", width - margin.right)
-      .attr("y1", lastY).attr("y2", lastY)
-      .attr("stroke", lineColor).attr("stroke-opacity", 0.35).attr("stroke-dasharray", "3 4");
-    svg.append("circle").attr("cx", lastX).attr("cy", lastY).attr("r", 4).attr("fill", lineColor);
-    svg.append("rect")
-      .attr("x", width - margin.right + 2).attr("y", lastY - 10)
-      .attr("width", 56).attr("height", 20).attr("rx", 3).attr("fill", lineColor);
-    svg.append("text")
-      .attr("x", width - margin.right + 30).attr("y", lastY + 4)
-      .attr("text-anchor", "middle").attr("font-size", "11px")
-      .attr("font-family", "ui-monospace, Menlo, Consolas, monospace")
-      .attr("font-weight", "700").attr("fill", "#0b1220").text(lastPrice.toFixed(2));
-
-    // Axes
-    const yAxis = svg.append("g").attr("transform", `translate(${width - margin.right},0)`)
-      .call(d3.axisRight(y).ticks(6).tickSize(0).tickPadding(6));
-    yAxis.selectAll("text").attr("fill", axisColor).attr("font-size", "10px");
-    yAxis.select("path").remove();
-
-    const xAxis = svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat("%H:%M:%S")).tickSize(0).tickPadding(6));
-    xAxis.selectAll("text").attr("fill", axisColor).attr("font-size", "10px");
-    xAxis.select("path").remove();
-
-    // ---- Crosshair + tooltip on hover ----
-    const crosshair = svg.append("g").style("display", "none");
-    const vLine = crosshair.append("line")
-      .attr("y1", margin.top).attr("y2", height - margin.bottom)
-      .attr("stroke", "#94a3b8").attr("stroke-opacity", 0.45).attr("stroke-dasharray", "3 3");
-    const hLine = crosshair.append("line")
-      .attr("x1", margin.left).attr("x2", width - margin.right)
-      .attr("stroke", "#94a3b8").attr("stroke-opacity", 0.45).attr("stroke-dasharray", "3 3");
-    const focus = crosshair.append("circle").attr("r", 4)
-      .attr("fill", "#0b1220").attr("stroke", lineColor).attr("stroke-width", 2);
-
-    const tip = svg.append("g").style("display", "none");
-    const tipBg = tip.append("rect")
-      .attr("rx", 4).attr("fill", "#0b1220").attr("stroke", "#1a2234").attr("stroke-width", 1)
-      .attr("width", 96).attr("height", 36);
-    const tipPrice = tip.append("text")
-      .attr("font-family", "ui-monospace, Menlo, Consolas, monospace")
-      .attr("font-size", "12px").attr("font-weight", "700").attr("fill", "#e5ecf5");
-    const tipTime = tip.append("text")
-      .attr("font-family", "ui-monospace, Menlo, Consolas, monospace")
-      .attr("font-size", "10px").attr("fill", "#8393ab");
-
-    const bisect = d3.bisector((d) => new Date(d.timestamp)).left;
-    const fmtTime = d3.timeFormat("%H:%M:%S");
-
-    svg.append("rect")
-      .attr("x", margin.left).attr("y", margin.top)
-      .attr("width", Math.max(0, width - margin.right - margin.left))
-      .attr("height", Math.max(0, height - margin.bottom - margin.top))
-      .attr("fill", "transparent")
-      .style("cursor", "crosshair")
-      .on("mouseenter", () => { crosshair.style("display", null); tip.style("display", null); })
-      .on("mouseleave", () => { crosshair.style("display", "none"); tip.style("display", "none"); })
-      .on("mousemove", (event) => {
-        const [mx] = d3.pointer(event);
-        const t0 = x.invert(mx);
-        const idx = Math.min(data.length - 1, Math.max(0, bisect(data, t0)));
-        const d = data[idx];
-        const cx = x(new Date(d.timestamp));
-        const cy = y(d.price);
-        vLine.attr("x1", cx).attr("x2", cx);
-        hLine.attr("y1", cy).attr("y2", cy);
-        focus.attr("cx", cx).attr("cy", cy);
-
-        const tipW = 96, tipH = 36, pad = 8;
-        const tx = cx + pad + tipW > width - margin.right ? cx - pad - tipW : cx + pad;
-        const ty = Math.max(margin.top, Math.min(height - margin.bottom - tipH, cy - tipH / 2));
-        tipBg.attr("x", tx).attr("y", ty);
-        tipPrice.attr("x", tx + 8).attr("y", ty + 16).text(d.price.toFixed(2));
-        tipTime.attr("x", tx + 8).attr("y", ty + 30).text(fmtTime(new Date(d.timestamp)));
-      });
-  };
 
   const symbolOf = (assetId) =>
     assets.find((a) => a.assetId === assetId || a.assetId === Number(assetId))?.symbol || `#${assetId}`;
@@ -652,7 +483,6 @@ const TradingDashboard = () => {
                 ? "border-red-500/45 bg-red-500/10 text-red-200"
                 : "border-tf-border-2 bg-black/60 text-tf-dim"
             }`}
-            title={API_BASE_URL}
           >
             <span
               className={`h-1.5 w-1.5 rounded-full ${
@@ -663,8 +493,7 @@ const TradingDashboard = () => {
                   : "bg-tf-mute"
               }`}
             />
-            <span>{streamStatus}</span>
-            <span className="font-medium normal-case tracking-normal text-tf-mute">{API_ORIGIN_LABEL}</span>
+            <span>{streamStatus === "live" ? "market live" : streamStatus}</span>
           </span>
         </div>
       </div>
@@ -723,11 +552,37 @@ const TradingDashboard = () => {
         </div>
       </div>
 
-      {/* ================ Workspace ================ */}
-      <div className="mb-2.5 grid gap-2.5 grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)_260px] xl:grid-cols-[230px_minmax(0,1fr)_280px_300px]">
+      {/* ================ Workspace toolbar ================ */}
+      <div className="mb-2 flex items-center justify-between px-0.5">
+        <span className="font-mono text-[10.5px] font-extrabold uppercase tracking-[0.18em] text-tf-mute">
+          Workspace · drag panel headers to rearrange · drag edges to resize
+        </span>
+        <button
+          type="button"
+          onClick={resetLayout}
+          className="rounded-md border border-tf-border bg-black/40 px-2.5 py-1 font-mono text-[10.5px] font-bold uppercase tracking-wider text-tf-dim transition hover:border-tf-accent hover:text-tf-text"
+        >
+          Reset Layout
+        </button>
+      </div>
+
+      {/* ================ Workspace (draggable grid) ================ */}
+      <ResponsiveGridLayout
+        className="tf-workspace"
+        layouts={layouts}
+        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+        cols={{ lg: 12, md: 12, sm: 8, xs: 4, xxs: 2 }}
+        rowHeight={28}
+        margin={[10, 10]}
+        containerPadding={[0, 0]}
+        draggableHandle=".tf-drag-handle"
+        compactType="vertical"
+        preventCollision={false}
+        onLayoutChange={onLayoutChange}
+      >
         {/* Watchlist */}
-        <aside className={`${PANEL} h-[560px]`}>
-          <header className={PANEL_HEAD}>
+        <div key="watchlist" className={`${PANEL} tf-widget`}>
+          <header className={`${PANEL_HEAD} tf-drag-handle`}>
             <span className={PANEL_TITLE}>Watchlist</span>
             <span className={PANEL_SUB}>{assets.length} symbols</span>
           </header>
@@ -775,51 +630,16 @@ const TradingDashboard = () => {
               );
             })}
           </div>
-        </aside>
+        </div>
 
         {/* Chart */}
-        <section className={`${PANEL} min-h-[480px]`}>
-          <header className={`${PANEL_HEAD} px-3`}>
-            <div className="flex min-w-0 items-baseline gap-2.5">
-              <span className="font-mono text-sm font-extrabold tracking-wider text-slate-100">{selectedSymbol}</span>
-              <span className="truncate text-[11px] text-tf-mute">{selectedAsset?.name || "Live tick chart"}</span>
-            </div>
-            <div className="inline-flex gap-0.5 rounded-md border border-tf-border bg-black/60 p-0.5">
-              {["1m", "5m", "15m", "1h", "1d"].map((t, i) => (
-                <button
-                  key={t}
-                  type="button"
-                  disabled
-                  className={`rounded px-2 py-0.5 font-mono text-[10.5px] font-bold tracking-wider cursor-default ${
-                    i === 1 ? "bg-sky-500/15 text-slate-100" : "text-tf-mute"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </header>
-          <div ref={chartRef} className="relative min-h-[380px] flex-1 [&>svg]:block [&>svg]:h-full [&>svg]:w-full" />
-          <footer className="flex flex-wrap gap-3.5 border-t border-tf-border bg-black/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-tf-mute">
-            {[
-              ["REST", "/api/trading"],
-              ["STOMP", "/ws-market"],
-              ["TAPE", "/api/trading/tape"],
-              ["WORKING", "/api/trading/working-orders"],
-            ].map(([k, v]) => (
-              <span key={k}>
-                {k}
-                <code className="ml-1 rounded border border-sky-500/20 bg-sky-500/10 px-1 py-[1px] font-mono text-[10px] normal-case tracking-normal text-sky-300">
-                  {v}
-                </code>
-              </span>
-            ))}
-          </footer>
-        </section>
+        <div key="chart" className={`${PANEL} tf-widget`}>
+          <CandlestickChart ticks={series} symbol={selectedSymbol} />
+        </div>
 
         {/* Order book */}
-        <aside className={`${PANEL} min-h-[480px]`}>
-          <header className={PANEL_HEAD}>
+        <div key="book" className={`${PANEL} tf-widget`}>
+          <header className={`${PANEL_HEAD} tf-drag-handle`}>
             <span className={PANEL_TITLE}>Order Book</span>
             <span className={PANEL_SUB}>{orderBook.symbol || selectedSymbol}</span>
           </header>
@@ -875,11 +695,11 @@ const TradingDashboard = () => {
               <div className="py-3 text-center text-[11px] text-tf-mute">No bids</div>
             )}
           </div>
-        </aside>
+        </div>
 
         {/* Order ticket */}
-        <aside className={`${PANEL} min-h-[480px] col-span-full xl:col-span-1`}>
-          <header className={PANEL_HEAD}>
+        <div key="ticket" className={`${PANEL} tf-widget`}>
+          <header className={`${PANEL_HEAD} tf-drag-handle`}>
             <span className={PANEL_TITLE}>Order Ticket</span>
             <span className={PANEL_SUB}>{orderForm.symbol}</span>
           </header>
@@ -1004,12 +824,11 @@ const TradingDashboard = () => {
             )}
           </form>
 
-          <div className="mt-auto grid grid-cols-4 gap-px border-t border-tf-border bg-tf-border">
+          <div className="mt-auto grid grid-cols-3 gap-px border-t border-tf-border bg-tf-border">
             {[
-              ["PROC", engineMetrics.processedOrders || 0],
-              ["REJ", engineMetrics.rejectedOrders || 0],
-              ["RETRY", engineMetrics.retriesUsed || 0],
-              ["REST", engineMetrics.restingOrders ?? 0],
+              ["Filled", engineMetrics.processedOrders || 0],
+              ["Rejected", engineMetrics.rejectedOrders || 0],
+              ["Open", engineMetrics.restingOrders ?? 0],
             ].map(([lbl, v]) => (
               <div key={lbl} className="flex flex-col items-center justify-center gap-0.5 bg-tf-panel px-1.5 py-2">
                 <span className="text-[9px] font-extrabold uppercase tracking-widest text-tf-mute">{lbl}</span>
@@ -1017,12 +836,24 @@ const TradingDashboard = () => {
               </div>
             ))}
           </div>
-        </aside>
-      </div>
+        </div>
 
-      {/* ================ Bottom tabs ================ */}
-      <div className={`${PANEL} min-h-[220px]`}>
-        <div className="flex overflow-x-auto border-b border-tf-border bg-black/40">
+        {/* Scanner */}
+        <div key="scanner" className={`${PANEL} tf-widget`}>
+          <ScannerWidget
+            assets={assets}
+            selectedSymbol={selectedSymbol}
+            flashMap={flashMap}
+            onSelect={(sym) => {
+              setSelectedSymbol(sym);
+              setOrderForm((p) => ({ ...p, symbol: sym }));
+            }}
+          />
+        </div>
+
+        {/* Bottom tabs */}
+        <div key="bottom" className={`${PANEL} tf-widget`}>
+          <div className="tf-drag-handle flex overflow-x-auto border-b border-tf-border bg-black/40">
           {[
             ["positions", "Positions"],
             ["working", "Working"],
@@ -1044,7 +875,7 @@ const TradingDashboard = () => {
           ))}
         </div>
 
-        <div className="max-h-[280px] overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {bottomTab === "positions" && (
             <Table
               head={["Symbol", "Asset", "Qty", "Last", "Market value"]}
@@ -1134,6 +965,7 @@ const TradingDashboard = () => {
           )}
         </div>
       </div>
+      </ResponsiveGridLayout>
     </div>
   );
 };

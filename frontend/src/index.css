@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "./styles/theme.css";
 @import "./styles/trading-terminal.css";
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
 
 body {
   margin: 0;

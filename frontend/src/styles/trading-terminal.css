@@ -71,3 +71,344 @@ body.trading-terminal-mode .tf-shell::before {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
+
+/* =========================================================
+   Glassmorphism + futuristic polish layer
+   Applied only when body has trading-terminal-mode class.
+   ========================================================= */
+
+/* Ambient color field behind everything — soft cyan/emerald glow */
+body.trading-terminal-mode::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 40% 30% at 15% 10%, rgba(56, 189, 248, 0.12), transparent 60%),
+    radial-gradient(ellipse 45% 35% at 85% 20%, rgba(16, 185, 129, 0.10), transparent 65%),
+    radial-gradient(ellipse 50% 40% at 50% 110%, rgba(168, 85, 247, 0.08), transparent 60%);
+  filter: blur(40px);
+  opacity: 0.9;
+}
+
+/* =========================================================
+   Navigation — floating glass bar, no solid divider line
+   ========================================================= */
+body.trading-terminal-mode .tf-nav {
+  background:
+    linear-gradient(180deg, rgba(14, 22, 36, 0.55) 0%, rgba(10, 15, 24, 0.45) 100%);
+  backdrop-filter: blur(24px) saturate(175%);
+  -webkit-backdrop-filter: blur(24px) saturate(175%);
+  border-bottom: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 40px -20px rgba(0, 0, 0, 0.6);
+  position: sticky;
+}
+/* Gradient glow divider under the nav — fades in/out horizontally. */
+body.trading-terminal-mode .tf-nav::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.05) 10%,
+    rgba(56, 189, 248, 0.35) 50%,
+    rgba(34, 197, 94, 0.2) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+/* Soft ambient bloom directly below nav, stitches nav into page. */
+body.trading-terminal-mode .tf-nav::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -40px;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 40px;
+  background: radial-gradient(
+    ellipse at center top,
+    rgba(56, 189, 248, 0.12),
+    transparent 70%
+  );
+  pointer-events: none;
+  filter: blur(6px);
+}
+body.trading-terminal-mode .tf-nav-mobile {
+  background: rgba(10, 15, 24, 0.85);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-top: 1px solid rgba(56, 189, 248, 0.15);
+}
+
+/* =========================================================
+   Window-level scrollbar styling (applies to html and body,
+   in addition to the descendant rule further below)
+   ========================================================= */
+body.trading-terminal-mode,
+html:has(body.trading-terminal-mode) {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.4) transparent;
+}
+body.trading-terminal-mode::-webkit-scrollbar,
+html:has(body.trading-terminal-mode)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+body.trading-terminal-mode::-webkit-scrollbar-track,
+html:has(body.trading-terminal-mode)::-webkit-scrollbar-track {
+  background: rgba(8, 12, 20, 0.4);
+}
+body.trading-terminal-mode::-webkit-scrollbar-thumb,
+html:has(body.trading-terminal-mode)::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(56, 189, 248, 0.45) 0%,
+    rgba(34, 197, 94, 0.3) 100%
+  );
+  border-radius: 10px;
+  border: 2px solid rgba(8, 12, 20, 0.4);
+}
+body.trading-terminal-mode::-webkit-scrollbar-thumb:hover,
+html:has(body.trading-terminal-mode)::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(125, 211, 252, 0.75) 0%,
+    rgba(56, 189, 248, 0.5) 100%
+  );
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+}
+
+/* Turn every .bg-tf-panel surface into frosted glass.
+   Also match opacity variants (bg-tf-panel/95, /90, etc.) via attribute selector. */
+body.trading-terminal-mode .bg-tf-panel,
+body.trading-terminal-mode [class*="bg-tf-panel/"] {
+  background:
+    linear-gradient(135deg, rgba(16, 23, 37, 0.55) 0%, rgba(10, 15, 24, 0.6) 100%) !important;
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  /* No visible outer border — edge is defined by the specular top highlight
+     and drop-shadow only, so no "white line" outlines on any panel. */
+  border-color: transparent !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 28px 60px -30px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(56, 189, 248, 0.035);
+  position: relative;
+  isolation: isolate;
+}
+
+/* Any element using .border-tf-border AS its outer outline — including
+   stat cards, feature cards, buttons on the Welcome page — should lose
+   the visible line and lean on inset highlight + shadow instead. */
+body.trading-terminal-mode .border.border-tf-border,
+body.trading-terminal-mode .border-tf-border.border {
+  border-color: transparent !important;
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(56, 189, 248, 0.06),
+    0 10px 24px -14px rgba(0, 0, 0, 0.6);
+}
+
+/* Specular highlight across the top edge — glass reflection. */
+body.trading-terminal-mode .bg-tf-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 120% 40% at 50% -10%, rgba(255, 255, 255, 0.05), transparent 60%),
+    radial-gradient(ellipse 60% 30% at 15% 0%, rgba(56, 189, 248, 0.08), transparent 65%);
+  mix-blend-mode: screen;
+  z-index: 0;
+}
+
+/* Make sure content sits above the ::before reflection. */
+body.trading-terminal-mode .bg-tf-panel > * { position: relative; z-index: 1; }
+
+/* Hovered / active panel gets a subtle cyan outline. */
+body.trading-terminal-mode .react-grid-item:hover > .bg-tf-panel {
+  border-color: rgba(56, 189, 248, 0.25) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.04),
+    0 32px 70px -28px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(56, 189, 248, 0.22),
+    0 0 22px -6px rgba(56, 189, 248, 0.18);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* Replace solid .border-tf-border dividers inside glass panels with a fading glow line. */
+body.trading-terminal-mode .bg-tf-panel .border-b.border-tf-border,
+body.trading-terminal-mode .bg-tf-panel .border-y.border-tf-border,
+body.trading-terminal-mode .bg-tf-panel .border-t.border-tf-border {
+  border-color: transparent !important;
+  position: relative;
+}
+body.trading-terminal-mode .bg-tf-panel .border-b.border-tf-border::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 163, 184, 0.08) 12%,
+    rgba(56, 189, 248, 0.28) 50%,
+    rgba(148, 163, 184, 0.08) 88%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+body.trading-terminal-mode .bg-tf-panel .border-t.border-tf-border::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 163, 184, 0.06) 15%,
+    rgba(56, 189, 248, 0.22) 50%,
+    rgba(148, 163, 184, 0.06) 85%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+body.trading-terminal-mode .bg-tf-panel .border-y.border-tf-border {
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+}
+body.trading-terminal-mode .bg-tf-panel .border-y.border-tf-border::before,
+body.trading-terminal-mode .bg-tf-panel .border-y.border-tf-border::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.28) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+body.trading-terminal-mode .bg-tf-panel .border-y.border-tf-border::before { top: -1px; }
+body.trading-terminal-mode .bg-tf-panel .border-y.border-tf-border::after  { bottom: -1px; }
+
+/* Row dividers inside scroll lists — keep them but soften */
+body.trading-terminal-mode .bg-tf-panel .border-slate-800\/50 {
+  border-color: rgba(148, 163, 184, 0.06) !important;
+}
+
+/* =========================================================
+   Thin, glowing custom scrollbars everywhere inside terminal
+   ========================================================= */
+body.trading-terminal-mode *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+body.trading-terminal-mode *::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 8px;
+}
+body.trading-terminal-mode *::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(56, 189, 248, 0.42) 0%,
+    rgba(56, 189, 248, 0.18) 100%
+  );
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.12);
+  box-shadow: inset 0 0 4px rgba(56, 189, 248, 0.2);
+  transition: background 0.18s ease;
+}
+body.trading-terminal-mode *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(125, 211, 252, 0.75) 0%,
+    rgba(56, 189, 248, 0.45) 100%
+  );
+  box-shadow:
+    inset 0 0 6px rgba(56, 189, 248, 0.35),
+    0 0 10px rgba(56, 189, 248, 0.25);
+}
+body.trading-terminal-mode *::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(
+    180deg,
+    rgba(167, 243, 208, 0.75) 0%,
+    rgba(52, 211, 153, 0.45) 100%
+  );
+}
+body.trading-terminal-mode *::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox */
+body.trading-terminal-mode * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.4) transparent;
+}
+
+/* =========================================================
+   Inputs, selects, and buttons — glass treatment
+   ========================================================= */
+body.trading-terminal-mode input,
+body.trading-terminal-mode select,
+body.trading-terminal-mode textarea {
+  background: rgba(7, 11, 18, 0.55) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+body.trading-terminal-mode input:focus,
+body.trading-terminal-mode select:focus {
+  box-shadow:
+    inset 0 0 0 1px rgba(56, 189, 248, 0.45),
+    0 0 0 3px rgba(56, 189, 248, 0.12),
+    0 0 20px -6px rgba(56, 189, 248, 0.4);
+}
+
+/* =========================================================
+   Tabs / segment-control liquid highlight
+   ========================================================= */
+body.trading-terminal-mode .bg-sky-500\/15,
+body.trading-terminal-mode .bg-sky-500\/20 {
+  background: linear-gradient(
+    180deg,
+    rgba(56, 189, 248, 0.22) 0%,
+    rgba(56, 189, 248, 0.08) 100%
+  ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(56, 189, 248, 0.25),
+    0 0 18px -6px rgba(56, 189, 248, 0.35);
+}
+
+/* --- react-grid-layout overrides for terminal look --- */
+.react-grid-item.react-grid-placeholder {
+  background: rgba(56, 189, 248, 0.18) !important;
+  border: 1px dashed rgba(56, 189, 248, 0.55);
+  border-radius: 12px;
+  opacity: 1 !important;
+}
+.react-grid-item > .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.react-grid-item:hover > .react-resizable-handle { opacity: 0.7; }
+.react-grid-item > .react-resizable-handle::after {
+  border-color: #38bdf8 !important;
+}
+.tf-drag-handle { cursor: grab; }
+.tf-drag-handle:active { cursor: grabbing; }
+.react-grid-item.react-draggable-dragging {
+  z-index: 40;
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.65);
+}
+/* Let inner panels actually fill the grid cell height */
+.react-grid-item > .tf-widget { height: 100%; }

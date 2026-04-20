@@ -28,7 +28,7 @@ const Navigation = () => {
     }`;
 
   return (
-    <nav className="sticky top-0 z-40 border-b border-tf-border bg-tf-panel/95 backdrop-blur shadow-[0_8px_32px_rgba(0,0,0,0.55)]">
+    <nav className="tf-nav sticky top-0 z-40">
       <div className="mx-auto grid max-w-[1760px] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-2.5">
         <Link to="/welcome" className="flex items-center gap-2.5 min-w-0">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[radial-gradient(120%_120%_at_30%_20%,rgba(34,197,94,0.18),rgba(56,189,248,0.05)_55%,transparent_70%)] shadow-[inset_0_0_0_1px_rgba(56,189,248,0.12),0_8px_24px_rgba(0,0,0,0.45)]" aria-hidden>
@@ -48,7 +48,7 @@ const Navigation = () => {
               Trade<span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-sky-400 bg-clip-text text-transparent">Flow</span>
             </span>
             <span className="mt-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.22em] text-tf-mute">
-              Market simulator · Paper engine
+              Trade · Track · Grow
             </span>
           </span>
         </Link>
@@ -95,7 +95,7 @@ const Navigation = () => {
       </div>
 
       {mobileMenuOpen && (
-        <div className="flex flex-col border-t border-tf-border bg-tf-panel/95 md:hidden">
+        <div className="tf-nav-mobile flex flex-col md:hidden">
           <Link
             to="/welcome"
             className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold ${onWelcome ? "border-l-[3px] border-emerald-400 bg-emerald-400/10 pl-[calc(1rem-3px)] text-emerald-100" : "text-tf-text hover:bg-white/5"}`}
