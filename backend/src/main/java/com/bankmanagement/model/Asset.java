@@ -1,12 +1,14 @@
 package com.bankmanagement.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "assets")
+@DynamicUpdate
 public class Asset {
 
     public enum AssetType {

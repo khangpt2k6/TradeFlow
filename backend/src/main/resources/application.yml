@@ -19,7 +19,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: ${HIBERNATE_DDL_AUTO:update}
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: ${HIBERNATE_DIALECT:org.hibernate.dialect.H2Dialect}
@@ -30,25 +30,15 @@ spring:
           provider_disables_autocommit: false
     database-platform: ${HIBERNATE_DIALECT:org.hibernate.dialect.H2Dialect}
 
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
   h2:
     console:
       enabled: true
       path: /h2-console
 
-  security:
-    user:
-      name: ${ADMIN_USERNAME}
-      password: ${ADMIN_PASSWORD}
-
-  # Async configuration
   task:
-    execution:
-      pool:
-        core-size: 5
-        max-size: 20
-        queue-capacity: 100
-        keep-alive: 60s
-      thread-name-prefix: "TradeFlow-Async-"
     scheduling:
       pool:
         size: 3
@@ -56,6 +46,7 @@ spring:
 
 server:
   port: 8080
+  shutdown: graceful
   tomcat:
     threads:
       max: 200
@@ -65,13 +56,5 @@ server:
 
 logging:
   level:
-    com.bankmanagement: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.springframework.scheduling: DEBUG
-    org.springframework.scheduling.concurrent: DEBUG
-
-# JWT Configuration
-jwt:
-  secret: ${JWT_SECRET:dev-secret-key-change-in-production-minimum-256-bits-long}
-  expiration: 86400000 # 24 hours in milliseconds
+    com.bankmanagement: INFO
+    org.hibernate.SQL: WARN
