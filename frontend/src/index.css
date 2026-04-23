@@ -12,3 +12,11 @@ body {
   color: var(--text-primary, #e5ecf5);
   overflow-x: hidden;
 }
+
+/* Terminal mode: every number lines up, nothing kerns unevenly. */
+body.trading-terminal-mode {
+  font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-feature-settings: "tnum" 1, "zero" 1, "ss01" 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}

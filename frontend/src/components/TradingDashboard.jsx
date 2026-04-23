@@ -44,14 +44,14 @@ const fmtCash = (n) =>
 const QTY_PRESETS = [1, 10, 100, 500];
 
 // -- Style helpers (keep JSX short) ----------------------------------------
-const PANEL = "flex flex-col min-w-0 rounded-xl border border-tf-border bg-tf-panel shadow-neu overflow-hidden";
-const PANEL_HEAD = "flex items-center justify-between px-3 py-2 border-b border-tf-border bg-black/30";
-const PANEL_TITLE = "text-[10.5px] font-extrabold tracking-[0.16em] uppercase text-tf-dim";
-const PANEL_SUB = "text-[10.5px] font-mono text-tf-mute";
-const MONO_NUM = "font-mono tabular-nums";
-const LABEL_MICRO = "text-[9.5px] font-extrabold tracking-[0.14em] uppercase text-tf-mute";
-const INPUT = "w-full px-2.5 py-2 rounded-md border border-tf-border bg-gradient-to-b from-[#070b12] to-[#0a0f18] text-tf-text font-mono text-[12.5px] font-semibold tabular-nums outline-none shadow-neu-inset focus:border-tf-accent transition";
-const TAB_BTN = "px-4 py-2.5 bg-transparent border-0 border-b-2 border-transparent text-tf-dim text-[11.5px] font-bold tracking-wider uppercase cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap hover:text-tf-text transition-colors";
+const PANEL = "flex flex-col min-w-0 border border-tf-border bg-tf-panel overflow-hidden";
+const PANEL_HEAD = "flex items-center justify-between px-2.5 py-1 border-b border-tf-border bg-black/60";
+const PANEL_TITLE = "text-[10px] font-bold tracking-[0.18em] uppercase text-tf-dim";
+const PANEL_SUB = "text-[10px] text-tf-mute tabular-nums";
+const MONO_NUM = "tabular-nums";
+const LABEL_MICRO = "text-[9px] font-bold tracking-[0.16em] uppercase text-tf-mute";
+const INPUT = "w-full px-2 py-1.5 border border-tf-border bg-[#03060a] text-tf-text text-[12px] font-semibold tabular-nums outline-none focus:border-tf-accent transition";
+const TAB_BTN = "px-3 py-1.5 bg-transparent border-0 border-b border-transparent text-tf-dim text-[11px] font-bold tracking-wider uppercase cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap hover:text-tf-text transition-colors";
 
 const statusColor = (status) => {
   if (status === "COMPLETED") return "text-teal-300 font-bold";
@@ -407,9 +407,9 @@ const TradingDashboard = () => {
   };
 
   return (
-    <div className="tf-shell relative mx-auto max-w-[1760px] px-3.5 pt-3 pb-5 text-tf-text text-[12.5px]">
+    <div className="tf-shell relative mx-auto max-w-[1760px] px-2 pt-2 pb-4 text-tf-text text-[12px]">
       {/* ================ Top bar ================ */}
-      <div className="mb-3 grid grid-cols-[1fr_auto] items-center gap-4 rounded-xl border border-tf-border bg-tf-panel px-4 py-2.5 shadow-neu">
+      <div className="mb-1.5 grid grid-cols-[1fr_auto] items-center gap-4 border border-tf-border bg-tf-panel px-3 py-1.5">
         {/* Ticker + OHL */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-1">
           <div className="flex items-baseline gap-2.5 font-mono">
@@ -499,7 +499,7 @@ const TradingDashboard = () => {
       </div>
 
       {/* ================ Market breadth strip ================ */}
-      <div className="mb-2.5 flex items-center gap-3 overflow-hidden rounded-xl border border-tf-border bg-tf-panel px-3 py-2 shadow-neu-raised">
+      <div className="mb-1.5 flex items-center gap-3 overflow-hidden border border-tf-border bg-tf-panel px-2.5 py-1">
         <div className="flex shrink-0 flex-col leading-none">
           <span className={LABEL_MICRO}>Breadth</span>
           <div className="mt-1 flex items-center gap-1.5 font-mono text-[11px] font-bold tabular-nums">
@@ -532,9 +532,9 @@ const TradingDashboard = () => {
                   setOrderForm((p) => ({ ...p, symbol: a.symbol }));
                 }}
                 title={`${a.symbol} ${fmt(a.price, 2)} (${up ? "+" : ""}${fmt(chg, 2)}%)`}
-                className={`group relative flex shrink-0 flex-col items-center justify-center overflow-hidden rounded-[5px] border px-2 py-1 font-mono text-[10px] font-bold leading-tight tabular-nums transition-transform hover:-translate-y-px hover:brightness-110 ${
+                className={`group relative flex shrink-0 flex-col items-center justify-center overflow-hidden border px-1.5 py-[3px] text-[10px] font-bold leading-tight tabular-nums transition-colors hover:brightness-110 ${
                   active
-                    ? "border-tf-accent ring-1 ring-sky-400/40 shadow-[0_0_0_1px_rgba(56,189,248,0.25)]"
+                    ? "border-tf-accent ring-1 ring-sky-400/40"
                     : "border-white/5"
                 }`}
                 style={{
@@ -553,14 +553,12 @@ const TradingDashboard = () => {
       </div>
 
       {/* ================ Workspace toolbar ================ */}
-      <div className="mb-2 flex items-center justify-between px-0.5">
-        <span className="font-mono text-[10.5px] font-extrabold uppercase tracking-[0.18em] text-tf-mute">
-          Workspace · drag panel headers to rearrange · drag edges to resize
-        </span>
+      <div className="mb-1 flex items-center justify-end px-0.5">
         <button
           type="button"
           onClick={resetLayout}
-          className="rounded-md border border-tf-border bg-black/40 px-2.5 py-1 font-mono text-[10.5px] font-bold uppercase tracking-wider text-tf-dim transition hover:border-tf-accent hover:text-tf-text"
+          title="Drag panel headers to rearrange · drag edges to resize"
+          className="border border-tf-border bg-black/60 px-2 py-[3px] text-[10px] font-bold uppercase tracking-wider text-tf-dim transition hover:border-tf-accent hover:text-tf-text"
         >
           Reset Layout
         </button>
@@ -584,27 +582,31 @@ const TradingDashboard = () => {
         <div key="watchlist" className={`${PANEL} tf-widget`}>
           <header className={`${PANEL_HEAD} tf-drag-handle`}>
             <span className={PANEL_TITLE}>Watchlist</span>
-            <span className={PANEL_SUB}>{assets.length} symbols</span>
+            <span className={PANEL_SUB}>{assets.length}</span>
           </header>
-          <div className="border-b border-tf-border bg-black/40 px-2 py-1.5">
+          <div className="border-b border-tf-border bg-black/40 px-1.5 py-1">
             <input
               type="text"
               value={watchFilter}
               onChange={(e) => setWatchFilter(e.target.value)}
               placeholder="Filter…"
-              className="w-full rounded border border-tf-border bg-[#070b12] px-2 py-1 font-mono text-[11px] uppercase text-tf-text outline-none placeholder:text-tf-mute focus:border-tf-accent"
+              className="w-full border border-tf-border bg-[#03060a] px-1.5 py-[3px] text-[11px] uppercase text-tf-text outline-none placeholder:text-tf-mute focus:border-tf-accent"
             />
           </div>
-          <div className="sticky top-0 z-10 grid grid-cols-[1fr_minmax(0,1fr)_auto] gap-1.5 border-b border-tf-border bg-[#080c14] px-2.5 py-1.5 font-mono text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-tf-mute">
-            <span>Symbol</span>
+          <div className="sticky top-0 z-10 grid grid-cols-[auto_1fr_auto_auto] gap-2 border-b border-tf-border bg-[#03060a] px-2 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-tf-mute">
+            <span>Sym</span>
             <span className="text-right">Last</span>
-            <span className="text-right">Chg%</span>
+            <span className="text-right">Chg</span>
+            <span className="text-right">%</span>
           </div>
           <div className="flex-1 overflow-y-auto">
             {assets.filter((a) => !watchFilter || a.symbol.toLowerCase().includes(watchFilter.toLowerCase()) || (a.name || "").toLowerCase().includes(watchFilter.toLowerCase())).map((asset) => {
               const up = Number(asset.changePercent) >= 0;
               const active = selectedSymbol === asset.symbol;
               const flash = flashMap[asset.symbol];
+              const chg = Number(asset.changePercent) || 0;
+              const price = Number(asset.price) || 0;
+              const absChg = (price * chg) / 100;
               return (
                 <button
                   key={asset.symbol}
@@ -613,18 +615,19 @@ const TradingDashboard = () => {
                     setSelectedSymbol(asset.symbol);
                     setOrderForm((prev) => ({ ...prev, symbol: asset.symbol }));
                   }}
-                  className={`grid w-full grid-cols-[1fr_minmax(0,1fr)_auto] items-center gap-1.5 border-0 border-b border-l-2 border-slate-800/50 border-l-transparent bg-transparent px-2.5 py-1.5 text-left font-mono text-xs text-tf-text transition-colors hover:bg-sky-500/5 ${
+                  className={`grid w-full grid-cols-[auto_1fr_auto_auto] items-center gap-2 border-0 border-b border-l-2 border-slate-800/50 border-l-transparent bg-transparent px-2 py-[2px] text-left text-[11px] text-tf-text transition-colors hover:bg-sky-500/5 ${
                     active ? "bg-sky-500/10 !border-l-tf-accent" : ""
                   } ${flash ? `tf-flash-${flash}-row` : ""}`}
                 >
-                  <span className={`text-[11.5px] font-bold tracking-wide ${active ? "text-sky-300" : "text-slate-100"}`}>{asset.symbol}</span>
+                  <span className={`text-[11px] font-bold ${active ? "text-sky-300" : "text-slate-100"}`}>{asset.symbol}</span>
                   <span className={`justify-self-end font-semibold tabular-nums ${up ? "text-tf-buy" : "text-tf-sell"} ${flash ? `tf-flash-${flash}-txt` : ""}`}>
                     {fmt(asset.price, 2)}
                   </span>
-                  <span className={`min-w-[54px] justify-self-end rounded px-1.5 py-0.5 text-right text-[10.5px] font-bold tabular-nums ${
-                    up ? "bg-emerald-500/10 text-tf-buy" : "bg-red-500/10 text-tf-sell"
-                  }`}>
-                    {up ? "+" : ""}{fmt(asset.changePercent, 2)}%
+                  <span className={`justify-self-end text-[10px] tabular-nums ${up ? "text-tf-buy" : "text-tf-sell"}`}>
+                    {up ? "+" : ""}{fmt(absChg, 2)}
+                  </span>
+                  <span className={`min-w-[46px] justify-self-end text-right text-[10px] font-bold tabular-nums ${up ? "text-tf-buy" : "text-tf-sell"}`}>
+                    {up ? "+" : ""}{fmt(chg, 2)}
                   </span>
                 </button>
               );
@@ -643,7 +646,7 @@ const TradingDashboard = () => {
             <span className={PANEL_TITLE}>Order Book</span>
             <span className={PANEL_SUB}>{orderBook.symbol || selectedSymbol}</span>
           </header>
-          <div className="grid grid-cols-3 gap-1.5 border-b border-tf-border px-2.5 py-1.5 font-mono text-[9.5px] font-extrabold uppercase tracking-wider text-tf-mute">
+          <div className="grid grid-cols-3 gap-1.5 border-b border-tf-border px-2 py-[3px] text-[9px] font-bold uppercase tracking-wider text-tf-mute">
             <span>Price</span>
             <span className="text-right">Size</span>
             <span className="text-right">Σ Size</span>
@@ -654,12 +657,11 @@ const TradingDashboard = () => {
             {asksCum.slice().reverse().map((row, i) => {
               const qty = Number(row.quantity) || 0;
               const pct = Math.min(100, (row.cum / depthMax) * 100);
-              const total = Number(row.price) * qty;
               return (
-                <div key={`ask-${i}-${row.price}`} className="relative grid grid-cols-3 gap-1.5 px-2.5 py-[3px] font-mono text-[11px] tabular-nums leading-tight">
-                  <span className="pointer-events-none absolute inset-y-0 right-0 z-0 bg-gradient-to-l from-red-500/25 to-red-500/5 transition-[width] duration-300" style={{ width: `${pct}%` }} />
+                <div key={`ask-${i}-${row.price}`} className="relative grid grid-cols-3 gap-1.5 px-2 py-0 text-[11px] tabular-nums leading-[18px]">
+                  <span className="pointer-events-none absolute inset-y-0 right-0 z-0 bg-red-500/18" style={{ width: `${pct}%` }} />
                   <span className="relative z-10 font-bold text-tf-sell">{fmt(row.price, 4)}</span>
-                  <span className="relative z-10 text-right text-tf-text">{fmt(qty, 2)}</span>
+                  <span className="relative z-10 text-right text-tf-text">{fmt(qty, 0)}</span>
                   <span className="relative z-10 text-right text-tf-dim">{fmt(row.cum, 0)}</span>
                 </div>
               );
@@ -670,10 +672,10 @@ const TradingDashboard = () => {
           </div>
 
           {/* Spread */}
-          <div className="flex items-center justify-between border-y border-tf-border bg-gradient-to-b from-sky-500/10 to-sky-500/5 px-3 py-2 font-mono">
-            <span className="text-sm font-extrabold tabular-nums text-slate-50">{fmt(orderBook.midPrice, 4)}</span>
-            <span className="text-[10.5px] text-tf-mute">
-              spread {spread != null ? fmt(spread, 4) : "—"}
+          <div className="flex items-center justify-between border-y border-tf-border bg-sky-500/10 px-2.5 py-1">
+            <span className="text-[13px] font-extrabold tabular-nums text-slate-50">{fmt(orderBook.midPrice, 4)}</span>
+            <span className="text-[10px] tabular-nums text-tf-mute">
+              SPRD {spread != null ? fmt(spread, 4) : "—"}
             </span>
           </div>
 
@@ -683,10 +685,10 @@ const TradingDashboard = () => {
               const qty = Number(row.quantity) || 0;
               const pct = Math.min(100, (row.cum / depthMax) * 100);
               return (
-                <div key={`bid-${i}-${row.price}`} className="relative grid grid-cols-3 gap-1.5 px-2.5 py-[3px] font-mono text-[11px] tabular-nums leading-tight">
-                  <span className="pointer-events-none absolute inset-y-0 right-0 z-0 bg-gradient-to-l from-emerald-500/25 to-emerald-500/5 transition-[width] duration-300" style={{ width: `${pct}%` }} />
+                <div key={`bid-${i}-${row.price}`} className="relative grid grid-cols-3 gap-1.5 px-2 py-0 text-[11px] tabular-nums leading-[18px]">
+                  <span className="pointer-events-none absolute inset-y-0 right-0 z-0 bg-emerald-500/18" style={{ width: `${pct}%` }} />
                   <span className="relative z-10 font-bold text-tf-buy">{fmt(row.price, 4)}</span>
-                  <span className="relative z-10 text-right text-tf-text">{fmt(qty, 2)}</span>
+                  <span className="relative z-10 text-right text-tf-text">{fmt(qty, 0)}</span>
                   <span className="relative z-10 text-right text-tf-dim">{fmt(row.cum, 0)}</span>
                 </div>
               );
@@ -971,15 +973,15 @@ const TradingDashboard = () => {
 };
 
 const Table = ({ head, cols, rows, empty, keyOf, render }) => (
-  <div className="flex flex-col font-mono text-[11.5px]">
-    <div className={`sticky top-0 z-10 grid ${cols} gap-2.5 border-b border-tf-border bg-[#080c14] px-3.5 py-2 text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-tf-mute`}>
+  <div className="flex flex-col text-[11px]">
+    <div className={`sticky top-0 z-10 grid ${cols} gap-2.5 border-b border-tf-border bg-[#03060a] px-3 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-tf-mute`}>
       {head.map((h, i) => <span key={i}>{h}</span>)}
     </div>
     {rows.length === 0 ? (
-      <div className="px-4 py-8 text-center text-[11.5px] text-tf-mute">{empty}</div>
+      <div className="px-4 py-6 text-center text-[11px] text-tf-mute">{empty}</div>
     ) : (
       rows.map((r, i) => (
-        <div key={keyOf ? keyOf(r) : r.symbol || i} className={`grid ${cols} items-center gap-2.5 border-b border-slate-800/50 px-3.5 py-1.5 tabular-nums`}>
+        <div key={keyOf ? keyOf(r) : r.symbol || i} className={`grid ${cols} items-center gap-2.5 border-b border-slate-800/50 px-3 py-[3px] tabular-nums`}>
           {render(r)}
         </div>
       ))
