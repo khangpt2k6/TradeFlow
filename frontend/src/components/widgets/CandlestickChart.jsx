@@ -1,67 +1,27 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import axios from "axios";
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from "lightweight-charts";
+import { API_BASE_URL } from "../../config/api";
 
-const INTERVALS = {
-  "1s":  1,
-  "5s":  5,
-  "15s": 15,
-  "1m":  60,
-  "5m":  300,
-};
-
-const bucketTime = (tsMs, sec) => Math.floor(tsMs / 1000 / sec) * sec;
-
-// Aggregate raw {timestamp, price} ticks into OHLC candles for a given interval.
-const aggregate = (ticks, intervalSec) => {
-  if (!ticks || ticks.length === 0) return [];
-  const map = new Map();
-  for (const t of ticks) {
-    const price = Number(t.price);
-    if (!Number.isFinite(price)) continue;
-    const time = bucketTime(Number(t.timestamp), intervalSec);
-    const c = map.get(time);
-    if (!c) {
-      map.set(time, { time, open: price, high: price, low: price, close: price, volume: 1 });
-    } else {
-      c.high = Math.max(c.high, price);
-      c.low = Math.min(c.low, price);
-      c.close = price;
-      c.volume += 1;
-    }
-  }
-  return Array.from(map.values()).sort((a, b) => a.time - b.time);
-};
-
-// Exponential moving average over close prices. Period is # of candles.
-const ema = (candles, period) => {
-  if (!candles.length) return [];
-  const k = 2 / (period + 1);
-  const out = [];
-  let prev = candles[0].close;
-  for (let i = 0; i < candles.length; i++) {
-    const c = candles[i].close;
-    prev = i === 0 ? c : c * k + prev * (1 - k);
-    out.push({ time: candles[i].time, value: prev });
-  }
-  return out;
-};
-
-// Session VWAP — cumulative typical-price * volume over cumulative volume.
-const vwap = (candles) => {
-  let pv = 0;
-  let v = 0;
-  return candles.map((c) => {
-    const tp = (c.high + c.low + c.close) / 3;
-    pv += tp * c.volume;
-    v += c.volume;
-    return { time: c.time, value: v ? pv / v : tp };
-  });
-};
+// Aggregation, EMA(9/20) and VWAP are now done server-side by CandlestickService.
+// We just fetch the prebuilt payload and pipe each series straight into lightweight-charts.
+const SUPPORTED_INTERVALS = ["1s", "5s", "15s", "1m", "5m"];
 
 const fmt = (n, d = 2) =>
   Number.isFinite(Number(n))
     ? Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d })
     : "—";
+
+const toNumeric = (rows) =>
+  (rows || []).map((r) => ({
+    ...r,
+    open:  r.open  != null ? Number(r.open)  : undefined,
+    high:  r.high  != null ? Number(r.high)  : undefined,
+    low:   r.low   != null ? Number(r.low)   : undefined,
+    close: r.close != null ? Number(r.close) : undefined,
+    value: r.value != null ? Number(r.value) : undefined,
+    volume: r.volume != null ? Number(r.volume) : undefined,
+  }));
 
 const CandlestickChart = ({ ticks, symbol }) => {
   const containerRef = useRef(null);
@@ -74,11 +34,39 @@ const CandlestickChart = ({ ticks, symbol }) => {
   const [interval, setInterval] = useState("5s");
   const [hover, setHover] = useState(null);   // { o,h,l,c,v,ema9,ema20,vwap }
   const [show, setShow] = useState({ ema9: true, ema20: true, vwap: true });
+  const [chartData, setChartData] = useState({ candles: [], ema9: [], ema20: [], vwap: [] });
 
-  const candles = useMemo(() => aggregate(ticks, INTERVALS[interval]), [ticks, interval]);
-  const ema9Data = useMemo(() => ema(candles, 9), [candles]);
-  const ema20Data = useMemo(() => ema(candles, 20), [candles]);
-  const vwapData = useMemo(() => vwap(candles), [candles]);
+  // Fetch server-aggregated candles + indicators when symbol/interval changes,
+  // and refresh whenever a new tick arrives upstream so the chart stays live.
+  useEffect(() => {
+    if (!symbol) return undefined;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await axios.get(
+          `${API_BASE_URL}/trading/candles/${symbol}?interval=${interval}`,
+        );
+        if (cancelled || !res.data) return;
+        setChartData({
+          candles: toNumeric(res.data.candles),
+          ema9: toNumeric(res.data.ema9),
+          ema20: toNumeric(res.data.ema20),
+          vwap: toNumeric(res.data.vwap),
+        });
+      } catch {
+        // leave the previous payload in place on transient errors
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, interval, ticks]);
+
+  const candles = chartData.candles;
+  const ema9Data = chartData.ema9;
+  const ema20Data = chartData.ema20;
+  const vwapData = chartData.vwap;
 
   const lastCandle = candles[candles.length - 1];
 

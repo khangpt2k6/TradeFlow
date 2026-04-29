@@ -269,6 +269,15 @@ const TradingDashboard = () => {
     }
   };
 
+  const fetchSessionStats = async (symbol) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/trading/assets/${symbol}/session-stats`, authHeaders());
+      setSessionStats(response.data || { open: null, high: null, low: null, last: null });
+    } catch {
+      setSessionStats({ open: null, high: null, low: null, last: null });
+    }
+  };
+
   const fetchFraudAlerts = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/trading/fraud-alerts`, authHeaders());
@@ -345,45 +354,14 @@ const TradingDashboard = () => {
     [assets, selectedSymbol],
   );
 
-  const sessionStats = useMemo(() => {
-    if (!series || series.length === 0) return { open: null, high: null, low: null, last: null };
-    const prices = series.map((p) => p.price);
-    return {
-      open: series[0].price,
-      high: Math.max(...prices),
-      low: Math.min(...prices),
-      last: series[series.length - 1].price,
-    };
-  }, [series]);
-
   const selectedChange = selectedAsset ? Number(selectedAsset.changePercent) : 0;
   const selectedUp = selectedChange >= 0;
 
-  // Cumulative depth from the spread outward — best price at cum = first level qty,
-  // each subsequent level adds its size, so bars grow as you walk away from the touch.
-  const { asksCum, bidsCum, depthMax } = useMemo(() => {
-    const asks = (orderBook.asks || []).slice(0, 10);
-    const bids = (orderBook.bids || []).slice(0, 10);
-    let aSum = 0;
-    const asksCum = asks.map((r) => {
-      aSum += Number(r.quantity) || 0;
-      return { ...r, cum: aSum };
-    });
-    let bSum = 0;
-    const bidsCum = bids.map((r) => {
-      bSum += Number(r.quantity) || 0;
-      return { ...r, cum: bSum };
-    });
-    const depthMax = Math.max(aSum, bSum, 1);
-    return { asksCum, bidsCum, depthMax };
-  }, [orderBook]);
-
-  const bestBid = orderBook.bids?.[0]?.price;
-  const bestAsk = orderBook.asks?.[0]?.price;
-  const spread =
-    Number.isFinite(Number(bestBid)) && Number.isFinite(Number(bestAsk))
-      ? Number(bestAsk) - Number(bestBid)
-      : null;
+  // Cumulative depth, best bid/ask, and spread are now precomputed by TradingService.buildOrderBook.
+  const asksCum = (orderBook.asks || []).slice(0, 10);
+  const bidsCum = (orderBook.bids || []).slice(0, 10);
+  const depthMax = Number(orderBook.depthMax) || 1;
+  const spread = orderBook.spread != null ? Number(orderBook.spread) : null;
 
   const estCost = useMemo(() => {
     const qty = Number(orderForm.quantity) || 0;
@@ -394,9 +372,6 @@ const TradingDashboard = () => {
     return qty * price;
   }, [orderForm, selectedAsset]);
 
-
-  const symbolOf = (assetId) =>
-    assets.find((a) => a.assetId === assetId || a.assetId === Number(assetId))?.symbol || `#${assetId}`;
 
   const tabCounts = {
     positions: portfolio.positions?.length || 0,
@@ -605,8 +580,8 @@ const TradingDashboard = () => {
               const active = selectedSymbol === asset.symbol;
               const flash = flashMap[asset.symbol];
               const chg = Number(asset.changePercent) || 0;
-              const price = Number(asset.price) || 0;
-              const absChg = (price * chg) / 100;
+              // dollarChange is computed server-side in MarketDataService.toTick.
+              const absChg = Number(asset.dollarChange) || 0;
               return (
                 <button
                   key={asset.symbol}
@@ -922,7 +897,7 @@ const TradingDashboard = () => {
               keyOf={(o) => `${o.tradeId}-${o.executedAt}`}
               render={(o) => [
                 <span key="i" className="text-tf-dim">#{o.tradeId}</span>,
-                <span key="s" className="font-bold tracking-wide text-slate-100">{symbolOf(o.assetId)}</span>,
+                <span key="s" className="font-bold tracking-wide text-slate-100">{o.symbol || `#${o.assetId}`}</span>,
                 <span key="sd" className={`font-bold ${o.tradeType === "BUY" ? "text-tf-buy" : "text-tf-sell"}`}>{o.tradeType}</span>,
                 <span key="q">{fmt(o.quantity, 4)}</span>,
                 <span key="p">${fmt(o.pricePerUnit, 4)}</span>,
