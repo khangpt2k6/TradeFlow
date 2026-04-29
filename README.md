@@ -2,7 +2,7 @@
 
 A **Spring Boot** + **React** paper-trading platform built to look and behave like a real trading terminal. Streams live synthetic ticks across **28 symbols** in parallel (mega-cap tech, finance, energy, consumer, crypto, commodities), runs market and limit orders through an in-memory matching engine with retry + anti-abuse controls, and renders a dense Bloomberg-style workspace: watchlist, D3 chart, order book with depth, ticket, positions, working limits, time & sales, and a market-breadth heat strip.
 
-<img width="1890" height="995" alt="image" src="https://github.com/user-attachments/assets/4d53ed15-3aae-4e6d-9135-eb44ad6fd237" />
+<img width="1749" height="996" alt="image" src="https://github.com/user-attachments/assets/5dcb7859-4d56-4406-95ad-e9dd4d7d8f62" />
 
 ## Tech Stack
 
