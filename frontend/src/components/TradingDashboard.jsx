@@ -92,9 +92,9 @@ const TradingDashboard = () => {
   const [flashMap, setFlashMap] = useState({});
   const [streamStats, setStreamStats] = useState({ tps: 0, advancers: 0, decliners: 0, symbols: 0 });
   const [watchFilter, setWatchFilter] = useState("");
+  const [sessionStats, setSessionStats] = useState({ open: null, high: null, low: null, last: null });
 
   const latestAssets = useRef([]);
-  const prevPricesRef = useRef({});
 
   const [layouts, setLayouts] = useState(
     () => loadSavedLayouts() || { lg: DEFAULT_LAYOUT_LG },
@@ -121,6 +121,7 @@ const TradingDashboard = () => {
     if (!selectedSymbol) return;
     fetchHistory(selectedSymbol);
     fetchOrderBook(selectedSymbol);
+    fetchSessionStats(selectedSymbol);
   }, [selectedSymbol]);
 
   useEffect(() => {
@@ -172,17 +173,15 @@ const TradingDashboard = () => {
     };
   }, [selectedSymbol]);
 
-  // Price-flash tracking for motion feedback
+  // Flash decay — direction is supplied by the server in each tick (`a.direction`),
+  // we only need to clear the highlight after the animation window.
   useEffect(() => {
     if (!assets || assets.length === 0) return;
     const directions = {};
     assets.forEach((a) => {
-      const prev = prevPricesRef.current[a.symbol];
-      const cur = Number(a.price);
-      if (prev != null && cur !== prev) {
-        directions[a.symbol] = cur > prev ? "up" : "down";
+      if (a.direction === "up" || a.direction === "down") {
+        directions[a.symbol] = a.direction;
       }
-      prevPricesRef.current[a.symbol] = cur;
     });
     const keys = Object.keys(directions);
     if (keys.length === 0) return;
@@ -209,6 +208,7 @@ const TradingDashboard = () => {
       fetchPortfolio();
       if (selectedSymbol) {
         fetchOrderBook(selectedSymbol);
+        fetchSessionStats(selectedSymbol);
       }
     }, 3000);
     return () => clearInterval(interval);

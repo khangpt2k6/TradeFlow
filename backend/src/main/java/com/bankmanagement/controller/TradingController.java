@@ -1,5 +1,6 @@
 package com.bankmanagement.controller;
 
+import com.bankmanagement.service.CandlestickService;
 import com.bankmanagement.service.MarketDataService;
 import com.bankmanagement.service.TradingService;
 import org.springframework.http.ResponseEntity;
@@ -16,10 +17,14 @@ public class TradingController {
 
     private final MarketDataService marketDataService;
     private final TradingService tradingService;
+    private final CandlestickService candlestickService;
 
-    public TradingController(MarketDataService marketDataService, TradingService tradingService) {
+    public TradingController(MarketDataService marketDataService,
+                             TradingService tradingService,
+                             CandlestickService candlestickService) {
         this.marketDataService = marketDataService;
         this.tradingService = tradingService;
+        this.candlestickService = candlestickService;
     }
 
     @GetMapping("/assets")
@@ -30,6 +35,17 @@ public class TradingController {
     @GetMapping("/assets/{symbol}/history")
     public ResponseEntity<?> history(@PathVariable String symbol) {
         return ResponseEntity.ok(marketDataService.getPriceHistory(symbol));
+    }
+
+    @GetMapping("/assets/{symbol}/session-stats")
+    public ResponseEntity<?> sessionStats(@PathVariable String symbol) {
+        return ResponseEntity.ok(marketDataService.getSessionStats(symbol));
+    }
+
+    @GetMapping("/candles/{symbol}")
+    public ResponseEntity<?> candles(@PathVariable String symbol,
+                                     @RequestParam(name = "interval", defaultValue = "5s") String interval) {
+        return ResponseEntity.ok(candlestickService.buildChartPayload(symbol, interval));
     }
 
     @PostMapping("/orders")

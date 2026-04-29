@@ -158,18 +158,89 @@ public class MarketDataService {
     }
 
     private Map<String, Object> toTick(Asset asset) {
+        BigDecimal price = asset.getCurrentPrice();
+        BigDecimal previous = asset.getPreviousPrice();
+        BigDecimal changePercent = asset.getChangePercent() != null
+            ? asset.getChangePercent()
+            : BigDecimal.ZERO;
+
+        // Server-computed dollar move so the watchlist row doesn't need to do `price * %chg / 100`.
+        BigDecimal dollarChange = price.multiply(changePercent)
+            .divide(ONE_HUNDRED, 4, RoundingMode.HALF_UP);
+
+        // Server-classified flash direction so the client doesn't need a prevPricesRef + diffing useEffect.
+        String direction = "flat";
+        if (previous != null) {
+            int cmp = price.compareTo(previous);
+            if (cmp > 0) direction = "up";
+            else if (cmp < 0) direction = "down";
+        }
+
         Map<String, Object> tick = new HashMap<>();
         tick.put("assetId", asset.getAssetId());
         tick.put("symbol", asset.getSymbol());
         tick.put("name", asset.getName());
         tick.put("assetType", asset.getAssetType().name());
-        tick.put("price", asset.getCurrentPrice());
-        tick.put("previousPrice", asset.getPreviousPrice());
-        tick.put("changePercent", asset.getChangePercent());
+        tick.put("price", price);
+        tick.put("previousPrice", previous);
+        tick.put("changePercent", changePercent);
+        tick.put("dollarChange", dollarChange);
+        tick.put("direction", direction);
         tick.put("lastUpdated", asset.getLastUpdated() != null
             ? asset.getLastUpdated().toInstant(ZoneOffset.UTC).toEpochMilli()
             : Instant.now().toEpochMilli());
         return tick;
+    }
+
+    /**
+     * O/H/L/last for the rolling session window kept in priceHistory (HISTORY_LIMIT points).
+     * Pulled out of the dashboard's `sessionStats` useMemo so the client just renders.
+     */
+    public Map<String, Object> getSessionStats(String symbol) {
+        Deque<Map<String, Object>> history = priceHistory.get(symbol == null ? "" : symbol.toUpperCase());
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("symbol", symbol == null ? null : symbol.toUpperCase());
+        if (history == null || history.isEmpty()) {
+            stats.put("open", null);
+            stats.put("high", null);
+            stats.put("low", null);
+            stats.put("last", null);
+            stats.put("points", 0);
+            return stats;
+        }
+
+        BigDecimal open = null, high = null, low = null, last = null;
+        int points;
+        synchronized (history) {
+            points = history.size();
+            for (Map<String, Object> point : history) {
+                Object raw = point.get("price");
+                if (!(raw instanceof BigDecimal price)) {
+                    continue;
+                }
+                if (open == null) open = price;
+                if (high == null || price.compareTo(high) > 0) high = price;
+                if (low == null || price.compareTo(low) < 0) low = price;
+                last = price;
+            }
+        }
+        stats.put("open", open);
+        stats.put("high", high);
+        stats.put("low", low);
+        stats.put("last", last);
+        stats.put("points", points);
+        return stats;
+    }
+
+    /** Direct accessor for the rolling history deque — used by CandlestickService for OHLC aggregation. */
+    public List<Map<String, Object>> rawHistory(String symbol) {
+        Deque<Map<String, Object>> history = priceHistory.get(symbol == null ? "" : symbol.toUpperCase());
+        if (history == null) {
+            return List.of();
+        }
+        synchronized (history) {
+            return new ArrayList<>(history);
+        }
     }
 
     private void addHistoryPoint(String symbol, BigDecimal price) {

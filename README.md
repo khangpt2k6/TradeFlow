@@ -29,29 +29,7 @@ A **Spring Boot** + **React** paper-trading platform built to look and behave li
 
 ## Architecture
 
-```
-┌──────────── React (Vite + Tailwind + D3) ────────────┐
-│  TradingDashboard  ◄── STOMP /topic/market ──┐        │
-│   Watchlist · Chart · Order Book · Ticket     │        │
-│   Breadth strip · Positions · Tape · Alerts   │        │
-└───────────────────────────┬──────────────────┬────────┘
-                            │ REST             │ WS
-                            ▼                  ▼
-┌──────────────── Spring Boot (Java 17) ──────────────┐
-│  TradingController  ──►  TradingService             │
-│                          · placeOrder (MKT/LMT)     │
-│                          · resting book + retries   │
-│                          · rate limit / fraud       │
-│                          · portfolio / tape / book  │
-│                                                     │
-│  MarketDataService  ─── @Scheduled(500ms) ──►       │
-│    parallelStream price ticks (28 symbols)          │
-│    ThreadPoolTaskExecutor (market-tick pool)        │
-│                                                     │
-│  AsyncConfig: marketTickExecutor + matchingExecutor │
-│              + ThreadPoolTaskScheduler              │
-└─────────────────────────────────────────────────────┘
-```
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/5d92a908-8f10-4b66-b4d1-c57ca8b5294d" />
 
 ## Run locally
 

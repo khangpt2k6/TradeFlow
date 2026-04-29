@@ -358,14 +358,43 @@ public class TradingService {
     ) {
     }
 
-    public List<Trade> getRecentOrders() {
+    /**
+     * Recent orders enriched with `symbol` and epoch-millis `executedAt` so the dashboard
+     * doesn't have to look up symbols from the asset list or parse LocalDateTime.
+     */
+    public List<Map<String, Object>> getRecentOrders() {
+        List<Trade> trades;
         synchronized (simulatedTrades) {
-            return simulatedTrades.stream()
+            trades = simulatedTrades.stream()
                 .filter(t -> Objects.equals(SIMULATION_USER_ID, t.getUserId()))
                 .sorted(Comparator.comparing(Trade::getExecutedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(50)
                 .toList();
         }
+
+        Map<Long, String> symbolByAssetId = new HashMap<>();
+        List<Map<String, Object>> out = new ArrayList<>(trades.size());
+        for (Trade t : trades) {
+            String symbol = symbolByAssetId.computeIfAbsent(t.getAssetId(),
+                id -> assetRepository.findById(id).map(Asset::getSymbol).orElse("#" + id));
+
+            Map<String, Object> row = new HashMap<>();
+            row.put("tradeId", t.getTradeId());
+            row.put("assetId", t.getAssetId());
+            row.put("symbol", symbol);
+            row.put("tradeType", t.getTradeType() != null ? t.getTradeType().name() : null);
+            row.put("quantity", t.getQuantity());
+            row.put("pricePerUnit", t.getPricePerUnit());
+            row.put("totalAmount", t.getTotalAmount());
+            row.put("commission", t.getCommission());
+            row.put("status", t.getStatus() != null ? t.getStatus().name() : null);
+            row.put("notes", t.getNotes());
+            row.put("executedAt", t.getExecutedAt() != null
+                ? t.getExecutedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                : null);
+            out.add(row);
+        }
+        return out;
     }
 
     public Map<String, Object> getPortfolioSummary() {
@@ -452,19 +481,46 @@ public class TradingService {
         List<Map<String, Object>> bids = new ArrayList<>();
         List<Map<String, Object>> asks = new ArrayList<>();
 
+        BigDecimal bidCum = BigDecimal.ZERO;
+        BigDecimal askCum = BigDecimal.ZERO;
+
         for (int level = 1; level <= 8; level++) {
             BigDecimal spreadFactor = BigDecimal.valueOf(level).multiply(BigDecimal.valueOf(0.0008));
             BigDecimal bidPrice = mid.multiply(BigDecimal.ONE.subtract(spreadFactor)).setScale(4, RoundingMode.HALF_UP);
             BigDecimal askPrice = mid.multiply(BigDecimal.ONE.add(spreadFactor)).setScale(4, RoundingMode.HALF_UP);
-            BigDecimal quantity = BigDecimal.valueOf(Math.max(50, 600 - (level * 45))).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal bidQty = BigDecimal.valueOf(Math.max(50, 600 - (level * 45))).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal askQty = bidQty.add(BigDecimal.valueOf(level * 4L));
 
-            bids.add(Map.of("price", bidPrice, "quantity", quantity));
-            asks.add(Map.of("price", askPrice, "quantity", quantity.add(BigDecimal.valueOf(level * 4L))));
+            bidCum = bidCum.add(bidQty);
+            askCum = askCum.add(askQty);
+
+            Map<String, Object> bidLevel = new HashMap<>();
+            bidLevel.put("price", bidPrice);
+            bidLevel.put("quantity", bidQty);
+            bidLevel.put("cum", bidCum);
+            bids.add(bidLevel);
+
+            Map<String, Object> askLevel = new HashMap<>();
+            askLevel.put("price", askPrice);
+            askLevel.put("quantity", askQty);
+            askLevel.put("cum", askCum);
+            asks.add(askLevel);
         }
+
+        BigDecimal bestBid = bids.isEmpty() ? null : (BigDecimal) bids.get(0).get("price");
+        BigDecimal bestAsk = asks.isEmpty() ? null : (BigDecimal) asks.get(0).get("price");
+        BigDecimal spread = (bestBid != null && bestAsk != null)
+            ? bestAsk.subtract(bestBid).setScale(4, RoundingMode.HALF_UP)
+            : null;
+        BigDecimal depthMax = bidCum.max(askCum);
 
         Map<String, Object> orderBook = new HashMap<>();
         orderBook.put("symbol", symbol.toUpperCase());
         orderBook.put("midPrice", mid);
+        orderBook.put("bestBid", bestBid);
+        orderBook.put("bestAsk", bestAsk);
+        orderBook.put("spread", spread);
+        orderBook.put("depthMax", depthMax);
         orderBook.put("bids", bids);
         orderBook.put("asks", asks);
         orderBook.put("timestamp", Instant.now().toEpochMilli());
